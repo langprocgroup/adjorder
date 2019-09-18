@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
 import sys
 from math import log
+import operator
 from collections import Counter
 
 def read_dict(filename, **kwds):
@@ -24,11 +26,24 @@ def pmi(joint, m1, m2):
             )
     return dict(gen())
 
-def main(joint, marginal1, marginal2):
+def marginalize(joint, k):
+    result = Counter()
+    for j, c in joint.items():
+        key = j[k]
+        result[key] += c
+    return result
+
+def main(joint, marginal1=None, marginal2=None):
     joint_counts = read_dict(joint)
     joint_counts = {tuple(k.split()) : v for k, v in joint_counts.items()}
-    marginal1_counts = read_dict(marginal1)
-    marginal2_counts = read_dict(marginal2)
+    if marginal1:
+        marginal1_counts = read_dict(marginal1)
+    else:
+        marginal1_counts = marginalize(joint_counts, 0)
+    if marginal2:
+        marginal2_counts = read_dict(marginal2)
+    else:
+        marginal2_counts = marginalize(joint_counts, 1)
     pmi_dict = pmi(joint_counts, marginal1_counts, marginal2_counts)
     for (one, two), v in pmi_dict.items():
         print("\t".join([str(one), str(two), str(v)]))
