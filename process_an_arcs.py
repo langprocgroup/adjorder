@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+""" Take a file of (A-)A-N arcs and filter them and sum up the counts"""
 from __future__ import print_function
 import sys
 import gzip
@@ -48,7 +49,7 @@ def process_aan(parts):
     adj2 = parse_word(word2)
     head = parse_word(word3)
     if is_noun(head) and is_adjective(adj1) and is_adjective(adj2):
-        return (adj1, adj2), count
+        return (head, adj1, adj2), count
     else:
         return None
     
@@ -72,18 +73,22 @@ def sum_counts(arcs_and_counts):
         c[arc] += count
     return c
 
-def main(filename):
+def main(filename=None):
     with open("english_adjectives.txt") as infile:
         global ADJECTIVES
         ADJECTIVES = {line.strip() for line in infile}
     with open("english_nouns.txt") as infile:
         global NOUNS
         NOUNS = {line.strip() for line in infile}
-    with gzip.open(filename) as infile:
-        counts = read_lines(infile)
-        c = sum_counts(counts)
-    for (head, adj), count in c.items():
-        print("\t".join([rep(head), rep(adj), str(count)]))
+    if filename:
+        infile = gzip.open(filename, mode='rt')
+    else:
+        infile = sys.stdin
+    counts = read_lines(infile)
+    c = sum_counts(counts)
+    for (head, *adjs), count in c.items():
+        adjs = "\t".join(map(rep, adjs))
+        print("\t".join([rep(head), adjs, str(count)]))
 
 if __name__ == '__main__':
     main(*sys.argv[1:])        
