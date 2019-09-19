@@ -46,7 +46,7 @@ def main(joint, marginal1=None, marginal2=None):
         marginal2_counts = marginalize(joint_counts, 1)
     pmi_dict = pmi(joint_counts, marginal1_counts, marginal2_counts)
     for (one, two), v in pmi_dict.items():
-        print("\t".join([str(one), str(two), str(v)]))
+        print("\t".join(map(str, [one, two, v])))
 
 if __name__ == '__main__':
     main(*sys.argv[1:])
