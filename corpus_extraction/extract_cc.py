@@ -13,9 +13,28 @@ def assertion_filter(f):
         except AssertionError:
             return None
     return wrapper
+
+@assertion_filter
+def a_deps(s, d):
+    dep = Word(cond.get_word(s, d), cond.get_pos2(s, d))
+    assert is_adjective(dep)
+    h = cliqs.depgraph.head_of(s, d)
+    head = Word(cond.get_word(s, h), cond.get_pos2(s, h))
+    r = cliqs.depgraph.deptype_to_head_of(s, d)
+    num_deps = len(list(cliqs.depgraph.dependents_of(s, d)))
+    left = d < h
+    return {
+        'd_word': dep.word,
+        'd_pos': dep.pos,
+        'h_word': head.word,
+        'h_pos': head.pos,
+        'deptype': r,
+        'num_deps': num_deps,
+        'left': left,
+    }
         
 @assertion_filter
-def extract_triples_under_node(s, n):
+def aan_triples(s, n):
     # It has to have at least 2 dependents to the left:
     deps = sorted(cliqs.depgraph.left_dependents_of(s, n))
     assert len(deps) > 1
@@ -41,27 +60,29 @@ def extract_triples_under_node(s, n):
     assert is_adjective(adj1)
 
     # If all asserts have passed, we have a legitimate triple
-    return head, adj1, adj2
+    return {'noun_word': head.word, 'noun_pos': head.pos, 'adj1_word': adj1.word, 'adj2_word': adj2.word, 'adj1_pos': adj1.pos, 'adj2_pos': adj2.pos}
                                 
-def extract_triples_from_sentence(s):
-    for n in s.nodes():
-        if n != 0:
-            yield extract_triples_under_node(s, n)
-
-def extract_triples(sentences):
-    return filter(None, rfutils.flatmap(extract_triples_from_sentence, sentences))
-
-def main(limit=None):
+def extract(f, sentences):
+    for s in sentences:
+        for n in s.nodes():
+            if n != 0:
+                result = f(s, n)
+                if result is not None:
+                    yield result
+                    
+def main(mode='aan', limit=None):
     if limit is not None:
         limit = int(limit)
     import cliqs.readcorpora
     # This will read from stdin:
     corpus = cliqs.readcorpora.UniversalDependency1Treebank()
-    triples = extract_triples(corpus.sentences())
+    if mode == 'aan':
+        results = extract(aan_triples, corpus.sentences())
+    elif mode == 'a':
+        results = extract(a_deps, corpus.sentences())
     if limit is not None:
-        triples = rfutils.take(triples, limit)
-    for n, a1, a2 in triples:
-        print("\t".join(map(rep, [n, a1, a2])))
+        results = rfutils.take(results, limit)
+    rfutils.write_dicts(sys.stdout, results)
     return 0
 
 if __name__ == '__main__':
