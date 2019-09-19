@@ -22,7 +22,7 @@ def a_deps(s, d):
     head = Word(cond.get_word(s, h), cond.get_pos2(s, h))
     r = cliqs.depgraph.deptype_to_head_of(s, d)
     num_deps = len(list(cliqs.depgraph.dependents_of(s, d)))
-    left = d < h
+    leftright = 'left' if d < h else 'right'
     return {
         'd_word': dep.word,
         'd_pos': dep.pos,
@@ -30,7 +30,7 @@ def a_deps(s, d):
         'h_pos': head.pos,
         'deptype': r,
         'num_deps': num_deps,
-        'left': left,
+        'left': leftright,
     }
         
 @assertion_filter
