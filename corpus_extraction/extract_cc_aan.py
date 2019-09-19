@@ -16,11 +16,14 @@ def assertion_filter(f):
         
 @assertion_filter
 def extract_triples_under_node(s, n):
-    head = Word(cond.get_word(s, n), cond.get_pos2(s, n))
-    assert is_noun(head)
+    # It has to have at least 2 dependents to the left:
     deps = sorted(cliqs.depgraph.left_dependents_of(s, n))
     assert len(deps) > 1
     penult, last = deps[-2], deps[-1]
+    
+    # The head has to be a noun:
+    head = Word(cond.get_word(s, n), cond.get_pos2(s, n))
+    assert is_noun(head)
 
     # Check adjacency:
     assert last == n - 1 # immediately adjacent to noun
@@ -38,7 +41,7 @@ def extract_triples_under_node(s, n):
     assert is_adjective(adj1)
 
     # If all asserts have passed, we have a legitimate triple
-    return rep(head), rep(adj1), rep(adj2)
+    return head, adj1, adj2
                                 
 def extract_triples_from_sentence(s):
     for n in s.nodes():
@@ -48,16 +51,21 @@ def extract_triples_from_sentence(s):
 def extract_triples(sentences):
     return filter(None, rfutils.flatmap(extract_triples_from_sentence, sentences))
 
-def main():
+def main(limit=None):
+    if limit is not None:
+        limit = int(limit)
     import cliqs.readcorpora
     # This will read from stdin:
     corpus = cliqs.readcorpora.UniversalDependency1Treebank()
-    for n, a1, a2 in extract_triples(corpus.sentences()):
-        print(n, a1, a2, sep="\t")
+    triples = extract_triples(corpus.sentences())
+    if limit is not None:
+        triples = rfutils.take(triples, limit)
+    for n, a1, a2 in triples:
+        print("\t".join(map(rep, [n, a1, a2])))
     return 0
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(*sys.argv[1:]))
             
             
     
