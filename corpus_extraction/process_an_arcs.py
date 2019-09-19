@@ -9,11 +9,13 @@ VERBOSE = 1
 
 Word = namedtuple('Word', "word pos".split())
 
-with open("english_adjectives.txt") as infile:
-    ADJECTIVES = {line.strip() for line in infile}
-with open("english_nouns.txt") as infile:
-    NOUNS = {line.strip() for line in infile}
+ADJ_PATH = "../data/english_adjectives.txt"
+NOUN_PATH = "../data/english_nouns.txt"
 
+with open(ADJ_PATH) as infile:
+    ADJECTIVES = {line.strip() for line in infile}
+with open(NOUN_PATH) as infile:
+    NOUNS = {line.strip() for line in infile}
 
 def rep(word):
     return "/".join(word)
