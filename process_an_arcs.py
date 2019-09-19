@@ -9,6 +9,12 @@ VERBOSE = 1
 
 Word = namedtuple('Word', "word pos".split())
 
+with open("english_adjectives.txt") as infile:
+    ADJECTIVES = {line.strip() for line in infile}
+with open("english_nouns.txt") as infile:
+    NOUNS = {line.strip() for line in infile}
+
+
 def rep(word):
     return "/".join(word)
 
@@ -74,12 +80,6 @@ def sum_counts(arcs_and_counts):
     return c
 
 def main(filename=None):
-    with open("english_adjectives.txt") as infile:
-        global ADJECTIVES
-        ADJECTIVES = {line.strip() for line in infile}
-    with open("english_nouns.txt") as infile:
-        global NOUNS
-        NOUNS = {line.strip() for line in infile}
     if filename:
         infile = gzip.open(filename, mode='rt')
     else:
