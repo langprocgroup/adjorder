@@ -22,7 +22,7 @@ def rep(word):
 
 def is_noun(word, celex=True):
     pos_ok = word.pos.startswith('NN')
-    celex_ok = not celex or (word.word in NOUNS or word.word + "s" in NOUNS)
+    celex_ok = not celex or (word.word.lower() in NOUNS or word.word + "s" in NOUNS)
     if VERBOSE > 1:
         if pos_ok and not celex_ok:
             print("Non-celex noun:", word.word, file=sys.stderr)
@@ -30,7 +30,7 @@ def is_noun(word, celex=True):
 
 def is_adjective(word, celex=True):
     pos_ok = word.pos.startswith('JJ')
-    celex_ok = not celex or word.word in ADJECTIVES
+    celex_ok = not celex or word.word.lower() in ADJECTIVES
     if VERBOSE > 1:
         if pos_ok and not celex_ok:
             print("Non-celex adjective:", word.word, file=sys.stderr)
