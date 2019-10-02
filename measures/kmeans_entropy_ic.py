@@ -1,3 +1,11 @@
+# reads in a tab-delimited list of triples
+#  COUNT ADJ ADJ NOUN
+# then creates Word2Vecs for each word in adj-noun pair
+# then clusters vectors into k clusters via sklearn
+# then finds the prob dist of clusters for each adj
+#  and takes entropy of that dist
+# finally measures how many of the triples have high-entropy adj first
+
 import sys
 import pandas as pd
 from gensim.models import Word2Vec
