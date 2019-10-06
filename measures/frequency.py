@@ -1,10 +1,10 @@
 """
 1. reads in a tab-delimited list of triples
-  COUNT ADJ ADJ NOUN
+  NOUN ADJ ADJ COUNT
 2. counts how many of the triples arranged such that most frequent adj is first
 """
 
-import sys, codecs, numpy, pickle, os
+import sys, codecs, numpy, pickle, os, re
 import pandas as pd
 #from scipy.stats import entropy
 #from collections import Counter
@@ -32,11 +32,11 @@ def load_data(filename):
     with open(filename) as f:
         for line in f:
             i = print_progress(i, n)
-            ls = line.split()
-            for j in range(int(ls[0])):
-                pairs.append([ls[1], ls[3]])
-                pairs.append([ls[2], ls[3]])
-            triples.append([ls[1], ls[2], ls[3]])
+            ls = re.sub('/[A-Z]*', '', line).split()
+            for j in range(int(ls[3])):
+                pairs.append([ls[1], ls[0]])
+                pairs.append([ls[2], ls[0]])
+            triples.append([ls[1], ls[2], ls[0]])
     return pairs, triples
 
 def load_from_pickle(filename, objects):
