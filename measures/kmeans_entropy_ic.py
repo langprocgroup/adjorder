@@ -1,12 +1,12 @@
 """
 1. reads in GloVe vectors and a tab-delimited list of triples
-  COUNT ADJ ADJ NOUN
+  NOUN ADJ ADJ COUNT
 2. generates k-means clusters of the noun vectors
 3. finds the prob dist of clusters for each adj and takes entropy of that dist
 4. counts how many of the triples have high-entropy adj first
 """
 
-import sys, codecs, numpy, pickle, os
+import sys, codecs, numpy, pickle, os, re
 import pandas as pd
 from scipy.stats import entropy
 from collections import Counter
@@ -36,11 +36,11 @@ def load_data(filename):
     with open(filename) as f:
         for line in f:
             i = print_progress(i, n)
-            ls = line.split()
-            for j in range(int(ls[0])):
-                pairs.append([ls[1], ls[3]])
-                pairs.append([ls[2], ls[3]])
-            triples.append([ls[1], ls[2], ls[3]])
+            ls = re.sub('/[A-Z]*', '', line).split()
+            for j in range(int(ls[3])):
+                pairs.append([ls[1], ls[0]])
+                pairs.append([ls[2], ls[0]])
+            triples.append([ls[1], ls[2], ls[0]])
     return pairs, triples
 
 def build_word_vector_matrix(vector_file, nouns, adjs):
@@ -89,7 +89,7 @@ if __name__ == '__main__':
         print("loading triples data from " + args.triples + " ...")
         pairs, triples = load_data(args.triples)
         print("\nsaving triples data to " + triples_pickle_file + " ...")
-        save_to_pickle(triples_pickle_file, [pairs, triples, adjs, nouns, pdf, adj_to_nouns])
+        save_to_pickle(triples_pickle_file, [pairs, triples])
     adjs = set([row[0] for row in pairs])
     nouns = set([row[1] for row in pairs])
     pdf = pd.DataFrame(pairs, columns=['adj', 'noun'])
