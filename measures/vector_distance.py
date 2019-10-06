@@ -1,10 +1,10 @@
 """
 1. reads in GloVe vectors and a tab-delimited list of triples
-  COUNT ADJ ADJ NOUN
+  NOUN ADJ ADJ COUNT
 2. counts how many of the triples arranged such that most cosine-similar adj is closest to noun
 """
 
-import sys, codecs, numpy, pickle, os
+import sys, codecs, numpy, pickle, os, re
 #import pandas as pd
 #from scipy.stats import entropy
 #from collections import Counter
@@ -35,10 +35,10 @@ def load_data(filename):
         for line in f:
             i = print_progress(i, n)
             ls = line.split()
-            for j in range(int(ls[0])):
-                pairs.append([ls[1], ls[3]])
-                pairs.append([ls[2], ls[3]])
-            triples.append([ls[1], ls[2], ls[3]])
+            for j in range(int(ls[3])):
+                pairs.append([ls[1], ls[0]])
+                pairs.append([ls[2], ls[0]])
+            triples.append([ls[1], ls[2], ls[0]])
     return pairs, triples
 
 def build_word_vector_matrix(vector_file, nouns, adjs):
