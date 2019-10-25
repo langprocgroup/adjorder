@@ -51,8 +51,8 @@ def load_vectors(filename):
     df = pd.read_csv(filename, sep='["]* ["]*', header=None, error_bad_lines=False, engine='python')
     return df
 
-def calc_pmi(pa, pb, pab):
-    return math.log(pab/float(pa*pb),2)
+def calc_pmi(pxy, px):
+    return math.log(pxy/px,2)
 
 def get_clusters(words, vectors, k):
     kmeans_model = KMeans(init='k-means++', n_clusters=k, n_init=10)
@@ -120,11 +120,11 @@ if __name__ == '__main__':
         nwf_vectors, awf_vectors, nwfs, awfs = extract_vectors(vectors, pairs)
 
         print("clustering adjs ...")
-        acls = get_clusters(awfs, awf_vectors, 200)
+        acls = get_clusters(awfs, awf_vectors, 300)
         pairs['acl'] = pairs['awf'].map(acls).astype('str')
 
         print("clustering nouns ...")
-        ncls = get_clusters(nwfs, nwf_vectors, 200)
+        ncls = get_clusters(nwfs, nwf_vectors, 1000)
         pairs['ncl'] = pairs['nwf'].map(ncls).astype('str')
 
         print("adding pairs to dataframe ...")
@@ -241,7 +241,7 @@ if __name__ == '__main__':
             p_awf_nwf = None
             p_awf_ncl = None
             p_acl_nwf = None
-            p_acl_ncl = None            
+            p_acl_ncl = None         
             try:
                 p_awf = awf_probs[awf]
             except:
@@ -260,22 +260,22 @@ if __name__ == '__main__':
                 pass            
             try:
                 nwf2awf = nwf_to_awfs[nwf]
-                p_awf_nwf = Counter(nwf2awf)[awf]/len(nwf2awf)
+                if p_awf != None: p_awf_nwf = Counter(nwf2awf)[awf]/len(nwf2awf)
             except:
                 pass
             try:
                 nwf2acl = nwf_to_acls[nwf]
-                p_awf_ncl = Counter(nwf2awf)[awf]/len(nwf2acl)
+                if p_awf != None: p_awf_ncl = Counter(nwf2awf)[awf]/len(nwf2acl)
             except:
                 pass
             try:
                 nwf2acl = nwf_to_acls[nwf]
-                p_acl_nwf = Counter(nwf2acl)[acl]/len(nwf2acl)
+                if acl != None: p_acl_nwf = Counter(nwf2acl)[acl]/len(nwf2acl)
             except:
                 pass
             try:
                 ncl2acl = ncl_to_acls[ncl]
-                p_acl_ncl = Counter(ncl2acl)[acl]/len(ncl2acl)
+                if acl != None: p_acl_ncl = Counter(ncl2acl)[acl]/len(ncl2acl)
             except:
                 pass
 
@@ -307,20 +307,20 @@ if __name__ == '__main__':
             pmi_acl_nwf = None
             pmi_acl_ncl = None
             try:
-                pmi_awf_nwf = calc_pmi(float(awf_probs[awf]), float(nwf_probs[nwf]), float(awf_nwf_probs[awf + "_" + nwf]))
+                pmi_awf_nwf = calc_pmi(p_awf_nwf, p_awf)
             except:
                 pass
             try:
-                pmi_awf_ncl = calc_pmi(float(awf_probs[awf]), float(ncl_probs[ncl]), float(awf_ncl_probs[awf + "_" + ncl]))
+                pmi_awf_ncl = calc_pmi(p_awf_ncl, p_awf)
             except:
                 pass
             try:
-                pmi_acl_nwf = calc_pmi(float(acl_probs[acl]), float(nwf_probs[nwf]), float(acl_nwf_probs[acl + "_" + nwf]))
+                pmi_acl_nwf = calc_pmi(p_acl_nwf, p_acl)
             except:
                 pass
 
             try:
-                pmi_acl_ncl = calc_pmi(float(acl_probs[acl]), float(ncl_probs[ncl]), float(acl_ncl_probs[acl + "_" + ncl]))
+                pmi_acl_ncl = calc_pmi(p_acl_ncl, p_acl)
             except:
                 pass
 

@@ -49,19 +49,14 @@ if __name__ == '__main__':
             elif row1[col] == row2[col]:
                 tie[col] += count
             else:
-                predicted = False
                 if row1[col] > row2[col]:
-                    predicted = True
-
-                if predicted:
+                    predicted = '1'
                     correct[col] += count
                 else:
+                    predicted = '0'
                     incorrect[col] += count
-                outfile.write(str(row1['id']) + "," + col + "," + str(abs(float(row1[col]) - float(row2[col]))) + "," + str(predicted).replace("True", "1").replace("False", "0") + "\n")
-            try:
-                pct = int(correct[col].values[0])/(int(correct[col].values[0]) + int(incorrect[col].values[0]))
-            except:
-                pass
+                outfile.write(str(row1['id']) + "," + col + "," + str(abs(float(row1[col]) - float(row2[col]))) + "," + str(predicted) + "\n")
+
             print_progress(i+1, n)
 
     outfile.close()
@@ -73,16 +68,21 @@ if __name__ == '__main__':
         f = incorrect[col].values[0]
         u = unknown[col].values[0]
         t = tie[col].values[0]
+        pattern = "(high low noun)"
 
+        total = p + f + t
+        
         if f > p:
             a = p
             p = f
             f = a
+            pattern = "(low high noun)"
         if p > 0:
-            print("\n" + col)
-            print("correct: {:.4f}".format(p/(p+f)) + " (" + str(p) + "/" + str(p+f) + ")")
-            print("    tie: {:.4f}".format(t/(p+f+u+t)) + " (" + str(t) + "/" + str(p+f+u+t) + ")")
-            print("unknown: {:.4f}".format(u/(p+f+u+t)) + " (" + str(u) + "/" + str(p+f+u+t) + ")")
+            print("\n" + col + "\n" + pattern)
+            print("pass: {:.4f}".format(p/(total)) + " (" + str(p) + "/" + str(total) + ")")
+            print("fail: {:.4f}".format(f/(total)) + " (" + str(f) + "/" + str(total) + ")")            
+            print(" tie: {:.4f}".format(t/(total)) + " (" + str(t) + "/" + str(total) + ")")
+            #print("unknown: {:.4f}".format(u/(p+f+u+t)) + " (" + str(u) + "/" + str(p+f+u+t) + ")")
 
 
 
