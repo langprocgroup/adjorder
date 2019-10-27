@@ -265,7 +265,7 @@ if __name__ == '__main__':
                 pass
             try:
                 nwf2acl = nwf_to_acls[nwf]
-                if p_awf != None: p_awf_ncl = Counter(nwf2awf)[awf]/len(nwf2acl)
+                if p_awf != None: p_awf_ncl = Counter(nwf2acl)[acl]/len(nwf2acl)
             except:
                 pass
             try:
