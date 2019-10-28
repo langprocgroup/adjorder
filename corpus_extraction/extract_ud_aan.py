@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import sys, nltk
+import sys
 
 def load_ud_file(filename):
     ud = pd.read_csv(filename, sep="\t",error_bad_lines=False, engine='python', header=None, comment= '#', quoting=3)
