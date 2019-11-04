@@ -1,7 +1,17 @@
-Calculate MI between adjectives and nouns in Google Syntactic n-grams and use that to predict adjective order.
+Calculate predictors of adjective order and test them in large dependency treebanks.
 
-Data in the two `.csv` files is from Scontras et al. (2017).
+The directory `corpus_extraction` has scripts for pulling relevant data out of CoNLLU-formatted dependency treebank files. Supposing you have a bunch of files at location `$CORPORA`, run the following to get all the adjective--adjective--noun pairs:
 
-Data in `english_adjectives.txt` and `english_nouns.txt` is from CELEX.
+```{bash}
+cat $CORPORA | python extract_cc.py aan > output_filename
+```
 
-The remaining data files, containing the actual count data and pmi calculations for adjectives and nouns, are too large to put on Github. Until I find a place to put them, you can contact me for these files at `rfutrell@uci.edu`.
+and run the following to just get all the adjectives:
+
+```{bash}
+cat $CORPORA | python extract_cc.py a > output_filename
+```
+
+Data in `data/english_adjectives.txt` and `data/english_nouns.txt` is from CELEX.
+
+If you are here for the code used in Futrell (2019), check out the previous version of this repo at 464e24d.
