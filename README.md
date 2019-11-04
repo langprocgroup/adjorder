@@ -12,6 +12,6 @@ and run the following to just get all the adjectives:
 cat $CORPORA | python extract_cc.py a > output_filename
 ```
 
-Data in `data/english_adjectives.txt` and `data/english_nouns.txt` is from CELEX.
+Data in `data/english_adjectives.txt` and `data/english_nouns.txt` is from CELEX. The files `data/subjectivity*` are from Scontras et al. (2017).
 
 If you are here for the code used in Futrell (2019), check out the previous version of this repo at 464e24d.
