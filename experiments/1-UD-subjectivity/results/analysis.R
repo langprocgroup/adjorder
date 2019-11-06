@@ -4,36 +4,40 @@ library(hydroGOF)
 library(tidyr)
 library(dplyr)
 
-setwd("~/Desktop/adjs!/kids-adjectives/experiments/1-kids-subjectivity/Submiterator-master")
+setwd("~/git/adjorder/experiments/1-UD-subjectivity/Submiterator-master")
 #setwd("~/git/kids-adjectives/experiments/1-kids-subjectivity/Submiterator-master/")
 
-
-num_round_dirs = 12
-df = do.call(rbind, lapply(1:num_round_dirs, function(i) {
-  return (read.csv(paste(
-    'round', i, '/kids-subjectivity.csv', sep='')) %>% #'round1/kids-subjectivity.csv')) %>% #for just 1
-      mutate(workerid = (workerid + (i-1)*9)))}))
-
-d = subset(df, select=c("workerid", "class","predicate","slide_number","response","language"))
+df = read.csv("1-UD-subjectivity-trials.csv",header=T)
+s = read.csv("1-UD-subjectivity-subject_information.csv",header=T)
+d = subset(df, select=c("workerid", "class","predicate","slide_number","response"))
+d$language = s$language[match(d$workerid,s$workerid)]
+d$assess = s$asses[match(d$workerid,s$workerid)]
+d$age = s$age[match(d$workerid,s$workerid)]
+d$gender = s$gender[match(d$workerid,s$workerid)]
 unique(d$language)
 
-length(unique(d$workerid)) # n=108
+length(unique(d$workerid)) # n=279
 head(d)
 
 ## remove non-English speakers
-d = d[d$language!="Russian"&d$language!="",]
-length(unique(d$workerid)) # n=106
+d = d[d$language=="english"|
+        d$language=="English"|
+        d$language=="English "|
+        d$language=="ENGLISH"|
+        d$language=="englsh"|
+        d$language=="enlish"|
+        d$language=="Englisha"|
+        d$language=="eNGLISH"|
+        d$language=="Englsh"
+        ,]
+length(unique(d$workerid)) # n=264
 
-## determine number of observations
-table(d$predicate)
+## load helper file for bootstrapped CIs
+source("../results/helpers.r")
 
-## calculate average subjectivity by predicate
-agg_adj = aggregate(response~predicate*class,data=d,mean)
-
-## calculate average subjectivity by class
-agg_class = aggregate(response~class,data=d,mean)
+agr = bootsSummary(data=d, measurevar="response", groupvars=c("predicate"))
 
 ## write to CSV files
-#write.csv(agg_adj,"../results/adjective-subjectivity.csv")
+#write.csv(agr,"../results/adjective-subjectivity.csv")
 #write.csv(agg_class,"../results/class-subjectivity.csv")
 
