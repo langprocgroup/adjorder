@@ -16,7 +16,7 @@ d$age = s$age[match(d$workerid,s$workerid)]
 d$gender = s$gender[match(d$workerid,s$workerid)]
 unique(d$language)
 
-length(unique(d$workerid)) # n=279
+length(unique(d$workerid)) # n=280
 head(d)
 
 ## remove non-English speakers
