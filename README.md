@@ -3,14 +3,14 @@ Calculate predictors of adjective order and test them in large dependency treeba
 The directory `corpus_extraction` has scripts for pulling relevant data out of CoNLLU-formatted dependency treebank files. Supposing you have a bunch of files at location `$CORPORA`, run the following in the directory `corpus_extraction` to get all the adjective--adjective--noun pairs:
 
 ```{bash}
-cat $CORPORA | python extract_cc.py aan > aan.csv
+cat $CORPORA | python extract_conllu.py aan > aan.csv
 sh csvcount.sh aan.csv > aan_counts.csv
 ```
 
 and run the following to just get all the adjectives:
 
 ```{bash}
-cat $CORPORA | python extract_cc.py a > a.csv
+cat $CORPORA | python extract_conllu.py a > a.csv
 sh csvcount.sh a.csv > a_counts.csv
 ```
 
