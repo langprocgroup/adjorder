@@ -52,18 +52,22 @@ def load_vectors(filename):
     return df
 
 def calc_pmi(pxy, px):
-    return math.log(pxy/px,2)
+    #return math.log(pxy/px,2)
+    return pxy-px
 
 def get_clusters(words, vectors, k):
     kmeans_model = KMeans(init='k-means++', n_clusters=k, n_init=10)
     kmeans_model.fit(vectors)
     labels = kmeans_model.labels_
+    centers = kmeans_model.cluster_centers_
 
     clusters = {}
+    centroids = {}
     for i, word in enumerate(words):
         clusters[word] = float(labels[i])
+        centroids[word] = centers[i]
 
-    return clusters
+    return clusters, centroids
 
 def ic(d):
     ents = {}
@@ -120,11 +124,11 @@ if __name__ == '__main__':
         nwf_vectors, awf_vectors, nwfs, awfs = extract_vectors(vectors, pairs)
 
         print("clustering adjs ...")
-        acls = get_clusters(awfs, awf_vectors, 300)
+        acls, actrs = get_clusters(awfs, awf_vectors, 300)
         pairs['acl'] = pairs['awf'].map(acls).astype('str')
 
         print("clustering nouns ...")
-        ncls = get_clusters(nwfs, nwf_vectors, 1000)
+        ncls, nctrs = get_clusters(nwfs, nwf_vectors, 1000)
         pairs['ncl'] = pairs['nwf'].map(ncls).astype('str')
 
         print("adding pairs to dataframe ...")
@@ -216,7 +220,7 @@ if __name__ == '__main__':
 
     print("printing output ...")
     outfile = open("results.csv", 'w')
-    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,vd_awf_nwf\n")
+    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,vd_awf_nwf,vd_awf_nct,vd_act_nwf,vd_act_nct\n")
     n = len(triples)
     for i, triple in enumerate(triples):
         print_progress(i+1, n)
@@ -243,39 +247,39 @@ if __name__ == '__main__':
             p_acl_nwf = None
             p_acl_ncl = None         
             try:
-                p_awf = awf_probs[awf]
+                p_awf = math.log(awf_probs[awf],2)
             except:
                 pass
             try:
-                p_acl = acl_probs[acl]
+                p_acl = math.log(acl_probs[acl],2)
             except:
                 pass
             try:
-                p_nwf = nwf_probs[nwf]
+                p_nwf = math.log(nwf_probs[nwf],2)
             except:
                 pass
             try:
-                p_ncl = ncl_probs[ncl]
+                p_ncl = math.log(ncl_probs[ncl],2)
             except:
                 pass            
             try:
                 nwf2awf = nwf_to_awfs[nwf]
-                if p_awf != None: p_awf_nwf = Counter(nwf2awf)[awf]/len(nwf2awf)
+                if p_awf != None: p_awf_nwf = math.log(Counter(nwf2awf)[awf]/len(nwf2awf),2)
             except:
                 pass
             try:
                 nwf2acl = nwf_to_acls[nwf]
-                if p_awf != None: p_awf_ncl = Counter(nwf2acl)[acl]/len(nwf2acl)
+                if p_awf != None: p_awf_ncl = math.log(Counter(nwf2acl)[acl]/len(nwf2acl),2)
             except:
                 pass
             try:
                 nwf2acl = nwf_to_acls[nwf]
-                if acl != None: p_acl_nwf = Counter(nwf2acl)[acl]/len(nwf2acl)
+                if acl != None: p_acl_nwf = math.log(Counter(nwf2acl)[acl]/len(nwf2acl),2)
             except:
                 pass
             try:
                 ncl2acl = ncl_to_acls[ncl]
-                if acl != None: p_acl_ncl = Counter(ncl2acl)[acl]/len(ncl2acl)
+                if acl != None: p_acl_ncl = math.log(Counter(ncl2acl)[acl]/len(ncl2acl),2)
             except:
                 pass
 
@@ -326,13 +330,29 @@ if __name__ == '__main__':
 
             # vector cosine distance
             vd_awf_nwf = None
+            vd_awf_nct = None
+            vd_act_nwf = None
+            vd_act_nct = None            
             try:
                 vd_awf_nwf = cosine(awf_vectors[awfs.index(awf)], nwf_vectors[nwfs.index(nwf)])
             except:
                 pass
+            try:
+                vd_awf_nct = cosine(awf_vectors[awfs.index(awf)], nctrs[nwfs.index(nwf)])
+            except:
+                pass
+            try:
+                vd_act_nwf = cosine(actrs[awfs.index(awf)], nwf_vectors[nwfs.index(nwf)])
+            except:
+                pass
+            try:
+                vd_act_nct = cosine(actrs[awfs.index(awf)], nctrs[nwfs.index(nwf)])
+            except:
+                pass            
+            
 
 
-            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(vd_awf_nwf) + "\n")
+            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(vd_awf_nwf) + "," + str(vd_awf_nct) + "," + str(vd_act_nwf) + "," + str(vd_act_nct) + "\n")
                 
     outfile.close()
     
