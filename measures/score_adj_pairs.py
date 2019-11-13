@@ -51,6 +51,10 @@ def load_vectors(filename):
     df = pd.read_csv(filename, sep='["]* ["]*', header=None, error_bad_lines=False, engine='python')
     return df
 
+def load_subj(filename):
+    df = pd.read_csv(filename, sep="\t")
+    return df
+
 def calc_pmi(pxy, px):
     #return math.log(pxy/px,2)
     return pxy-px
@@ -65,7 +69,7 @@ def get_clusters(words, vectors, k):
     centroids = {}
     for i, word in enumerate(words):
         clusters[word] = float(labels[i])
-        centroids[word] = centers[i]
+        centroids[word] = centers[labels[i]]
 
     return clusters, centroids
 
@@ -96,15 +100,22 @@ if __name__ == '__main__':
     parser.add_argument('vectors', type=str, help='GloVe file containing word vectors')
     parser.add_argument('pairs', type=str, help='file containing [count adj noun] pairs')
     parser.add_argument('triples', type=str, help='file containing [count adj adj noun] triples')
+    parser.add_argument('subj', type=str, help='file containing [adj subj] subjectivity ratings')
     args = parser.parse_args()
 
     print("loading triples data from " + args.triples + " ...")
     triples = load_triples(args.triples)
 
+    print("loading subjectivities ...")
+    subjectivities = load_subj(args.subj).set_index('predicate')
+    subj = subjectivities.to_dict()['response']
+    
     pickle_file = "data.pkl"
     pairs = None
     ncls = None
     acls = None
+    nctrs = None
+    actrs = None
     nwf_vectors = None
     awf_vectors = None
     nwfs = None
@@ -112,7 +123,7 @@ if __name__ == '__main__':
 
     if pickle_file in os.listdir():
         print("loading pairs data from " + pickle_file + " ...")
-        [pairs, ncls, acls, nwf_vectors, awf_vectors, nwfs, awfs] = load_from_pickle(pickle_file, [pairs, ncls, acls, nwf_vectors, awf_vectors, nwfs, awfs])
+        [pairs, ncls, acls, nctrs, actrs, nwf_vectors, awf_vectors, nwfs, awfs] = load_from_pickle(pickle_file, [pairs, ncls, acls, nctrs, actrs, nwf_vectors, awf_vectors, nwfs, awfs])
     else:
         print("loading pairs data from " + args.pairs + " ...")
         pairs = load_pairs(args.pairs)
@@ -124,7 +135,7 @@ if __name__ == '__main__':
         nwf_vectors, awf_vectors, nwfs, awfs = extract_vectors(vectors, pairs)
 
         print("clustering adjs ...")
-        acls, actrs = get_clusters(awfs, awf_vectors, 300)
+        acls, actrs = get_clusters(awfs, awf_vectors, 200)
         pairs['acl'] = pairs['awf'].map(acls).astype('str')
 
         print("clustering nouns ...")
@@ -138,7 +149,14 @@ if __name__ == '__main__':
         pairs['acl_ncl'] = pairs['acl'] + "_" + pairs['ncl']
 
         print("saving data to " + pickle_file + " ...")
-        save_to_pickle(pickle_file, [pairs, ncls, acls, nwf_vectors, awf_vectors, nwfs, awfs])
+        save_to_pickle(pickle_file, [pairs, ncls, acls, nctrs, actrs, nwf_vectors, awf_vectors, nwfs, awfs])
+
+
+    print("calculating cluster subjectivities ...")
+    subj_clusters = pd.merge(subjectivities, pd.DataFrame.from_dict(acls, orient='index'), how='inner', left_index=True, right_index=True).reset_index()
+    subj_clusters.columns = ['predicate', 'response', 'cluster']
+    subj_clusters = pd.pivot_table(subj_clusters[['response', 'cluster']], index=['cluster'], values=['response', 'cluster'], aggfunc=np.average).to_dict()['response']
+
     
     print("calculating probabilities ...")
     print(" -awfs")
@@ -218,9 +236,11 @@ if __name__ == '__main__':
     print(" -acl_ncl")
     acl_ncl_ents = ic(acl_to_ncls)
 
+    
+
     print("printing output ...")
     outfile = open("results.csv", 'w')
-    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,vd_awf_nwf,vd_awf_nct,vd_act_nwf,vd_act_nct\n")
+    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,vd_awf_nwf,vd_awf_nct,vd_act_nwf,vd_act_nct,s_awf,s_acl\n")
     n = len(triples)
     for i, triple in enumerate(triples):
         print_progress(i+1, n)
@@ -338,21 +358,31 @@ if __name__ == '__main__':
             except:
                 pass
             try:
-                vd_awf_nct = cosine(awf_vectors[awfs.index(awf)], nctrs[nwfs.index(nwf)])
+                vd_awf_nct = cosine(awf_vectors[awfs.index(awf)], nctrs[nwf])
             except:
                 pass
             try:
-                vd_act_nwf = cosine(actrs[awfs.index(awf)], nwf_vectors[nwfs.index(nwf)])
+                vd_act_nwf = cosine(actrs[awf], nwf_vectors[nwfs.index(nwf)])
             except:
                 pass
             try:
-                vd_act_nct = cosine(actrs[awfs.index(awf)], nctrs[nwfs.index(nwf)])
+                vd_act_nct = cosine(actrs[awf], nctrs[nwf])
             except:
                 pass            
             
+            # subjectivity
+            s_awf = None
+            s_acl = None
+            try:
+                s_awf = subj[awf]
+            except:
+                pass
+            try:
+                s_acl = subj_clusters[float(acl)]
+            except:
+                pass
 
-
-            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(vd_awf_nwf) + "," + str(vd_awf_nct) + "," + str(vd_act_nwf) + "," + str(vd_act_nct) + "\n")
+            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(vd_awf_nwf) + "," + str(vd_awf_nct) + "," + str(vd_act_nwf) + "," + str(vd_act_nct) + "," + str(s_awf) + "," + str(s_acl) + "\n")
                 
     outfile.close()
     
