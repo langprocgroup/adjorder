@@ -23,12 +23,13 @@ if __name__ == '__main__':
     parser.add_argument('inputfile', type=str, help='tab-separated list of X and y')
     args = parser.parse_args()
 
-    combo = True
+    combo = False
     colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'black']
     p_index = 0
     pmi_index = 0
     ic_index = 0
     vd_index = 0
+    subj_index = 0
 
     df = load_file(args.inputfile)
     clf = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
@@ -37,7 +38,6 @@ if __name__ == '__main__':
         plt.rcParams["figure.figsize"][0] = 12
         
     for i, predictor in enumerate(df.predictor.unique()):
-        print(predictor)        
         X = []
         y = []
 
@@ -54,7 +54,7 @@ if __name__ == '__main__':
             xmax = 1
         else:
             #plt.figure(1,figsize=(3,3))              
-            plt.subplot(3, 5, (i+1))
+            plt.subplot(4, 5, (i+1))
             plt.axhline(0.5, color='gray', linestyle='--')
             #plt.clf()
             
@@ -94,6 +94,11 @@ if __name__ == '__main__':
             linestyle='dashdot'
             color = colors[vd_index]
             vd_index += 1
+        elif title[0] == "s":
+            title="subj(" + title[1] + ")"
+            linestyle='dashed'
+            color = colors[subj_index]
+            subj_index += 1
 
         if not combo:
             color='green'
@@ -111,16 +116,13 @@ if __name__ == '__main__':
         else:
             plt.plot(X_test, y_test, color=color, linestyle=linestyle, label="{:.4f}".format(auc) + " " + title)
 
-
-
-            
-        
-
         if not combo:
             plt.title(title + ", n: " + str(n))
             plt.xlabel("delta")
             plt.ylabel("probability")
             plt.legend(loc = 'center left', bbox_to_anchor=(0, 0.2))
+
+        print(title + "\t" + str(n) + "\t{:4f}\t{:4f}".format(s/n, auc)) 
     if combo:
         handles, labels = plt.gca().get_legend_handles_labels()
         labels, handles = zip(*sorted(zip(labels, handles), key=lambda t: t[0], reverse=True))
