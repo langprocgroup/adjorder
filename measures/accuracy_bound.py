@@ -2,6 +2,7 @@
 import sys
 import argparse
 from collections import Counter
+from fractions import Fraction
 
 import numpy as np
 import pandas as pd
@@ -41,7 +42,7 @@ def triple_upper_bound(triples, pairs):
     d['countmatch'] = d['count'] * d['match']
     aggregated = d[['a^1', 'a^2', 'n', 'countmatch']].groupby(['a^1', 'a^2', 'n']).sum().reset_index()
     aggregated['count'] = d[['a^1', 'a^2', 'n', 'count']].groupby(['a^1', 'a^2', 'n']).sum().reset_index()['count']
-    aggregated['prop_matching'] = aggregated['countmatch'] / aggregated['count']
+    aggregated['prop_matching'] = [Fraction(cm,c) for cm, c in zip(aggregated['countmatch'], aggregated['count'])]
     prop_accurate = np.maximum(aggregated['prop_matching'], 1 - aggregated['prop_matching'])
     return prop_accurate.mean()
 
@@ -54,13 +55,19 @@ def pair_upper_bound(triples, pairs):
         count_first[a, n] += triples[(triples['a1'] == a) & (triples['n'] == n)]['count'].sum()
         total_count[a, n] = count_first[a, n] + triples[(triples['a2'] == a) & (triples['n'] == n)]['count'].sum()
     pair_props = pd.DataFrame([(a,n,c/total_count[a,n]) for (a, n), c in count_first.items()])
-    pair_props.columns = ['a', 'n', 'prop_first']
-    first_score = triples.merge(pair_props, left_on=['a^1', 'n'], right_on=['a', 'n'])['prop_first']
-    second_score = triples.merge(pair_props, left_on=['a^2', 'n'], right_on=['a', 'n'])['prop_first']
-    diff = first_score - second_score
-    predictions = triples['match'] == (diff > 0)
-    predictions[diff == 0.0] = .5
-    return (predictions * triples['count']).sum(axis=0) / triples['count'].sum()
+    pair_props.columns = ['a', 'n', 'prop_first^1']
+    N = len(triples)
+    triples = triples.merge(pair_props, left_on=['a^1', 'n'], right_on=['a', 'n'])
+    pair_props.columns = ['a', 'n', 'prop_first^2']    
+    triples = triples.merge(pair_props, left_on=['a^2', 'n'], right_on=['a', 'n'])
+    assert len(triples) == N
+    assert (triples['a^1'] == triples['a_x']).all()
+    assert (triples['a^2'] == triples['a_y']).all()    
+    triples['diff'] = triples['prop_first^1'] - triples['prop_first^2']
+    triples['predicted'] = triples['match'] == (triples['diff'] > 0)
+    mask = triples['diff'] == 0.0
+    triples[mask]['predicted'] = .5
+    return (triples['predicted'] * triples['count']).sum(axis=0), triples['count'].sum()
 
 def torch_pair_upper_bound(triples, pairs, num_epochs):    
     # Represent each pair as a 1-hot X of dimension K.
@@ -98,7 +105,8 @@ def main(filename, num_samples=DEFAULT_NUM_SAMPLES):
 
     print("Pair random accuracy, mean in %s samples:" % str(num_samples), random_accuracy(triples, pairs, num_samples))
     print("Triple upper bound:", triple_upper_bound(triples, pairs))
-    print("Pair upper bound:", pair_upper_bound(triples, pairs))
+    num, denom = pair_upper_bound(triples, pairs)
+    print("Pair upper bound:", num, "/", denom, " = ", num/denom)
 
     return 0
 
