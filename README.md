@@ -33,6 +33,8 @@ and run the following to just get all the adjectives:
 cat $CORPORA | python extract_conllu.py a > a.csv
 sh csvcount.sh a.csv > a_counts.csv
 ```
+## Choosing a k for clusters
+
 
 ## Calculating predictors
 
