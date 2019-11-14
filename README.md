@@ -53,11 +53,11 @@ Output is a comma-delimited `scores.csv` with the following columns:
 1. `acl` -- adjective cluster ID
 1. `ncl` -- noun cluster ID
 1. various predictors named according to the following scheme:
-* `p_` -- log probability
-* `ic_` -- integration cost
-* `pmi_` -- pointwise mutual information
-* `vd_` -- vector distance
-* `subj_` -- subjectivity rating
+    * `p_` -- log probability
+    * `ic_` -- integration cost
+    * `pmi_` -- pointwise mutual information
+    * `vd_` -- vector distance
+    * `subj_` -- subjectivity rating
 
 Note that `score_adj_pairs.py` creates a pickle file `data.pkl` to store adjective and noun vectors and clusters, since generating these is the most time-consuming process. The pickled data will be used on subsequent runs of the script.
 
