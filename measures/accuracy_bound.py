@@ -69,6 +69,29 @@ def pair_upper_bound(triples, pairs):
     triples[mask]['predicted'] = .5
     return (triples['predicted'] * triples['count']).sum(axis=0), triples['count'].sum()
 
+def single_upper_bound(triples, pairs):
+    # The score for each adjective-noun is just the proportion of times the adjective shows up first.
+    # Conjecture: This is the MLE.
+    count_first = Counter()
+    total_count = Counter()
+    for a in pairs['a']:
+        count_first[a] += triples[(triples['a1'] == a)]['count'].sum()
+        total_count[a] = count_first[a] + triples[(triples['a2'] == a)]['count'].sum()
+    pair_props = pd.DataFrame([(a,c/total_count[a]) for a, c in count_first.items()])
+    pair_props.columns = ['a', 'prop_first^1']
+    N = len(triples)
+    triples = triples.merge(pair_props, left_on=['a^1'], right_on=['a'])
+    pair_props.columns = ['a', 'prop_first^2']    
+    triples = triples.merge(pair_props, left_on=['a^2'], right_on=['a'])
+    assert len(triples) == N
+    assert (triples['a^1'] == triples['a_x']).all()
+    assert (triples['a^2'] == triples['a_y']).all()    
+    triples['diff'] = triples['prop_first^1'] - triples['prop_first^2']
+    triples['predicted'] = triples['match'] == (triples['diff'] > 0)
+    mask = triples['diff'] == 0.0
+    triples[mask]['predicted'] = .5
+    return (triples['predicted'] * triples['count']).sum(axis=0), triples['count'].sum()
+
 def torch_pair_upper_bound(triples, pairs, num_epochs):    
     # Represent each pair as a 1-hot X of dimension K.
     # Then V = W*X is the weight for adjective X, where M is a vector of dimension K, and * is elementwise product.
@@ -103,10 +126,12 @@ def main(filename, num_samples=DEFAULT_NUM_SAMPLES):
     # The dependent variable y is whether the superscript indices match the subscript indices.    
     triples['match'] = (triples['a1'] == triples['a^1']) & (triples['a2'] == triples['a^2'])
 
-    print("Pair random accuracy, mean in %s samples:" % str(num_samples), random_accuracy(triples, pairs, num_samples))
-    print("Triple upper bound:", triple_upper_bound(triples, pairs))
+    print("Random accuracy for S(a, n), mean in %s samples:" % str(num_samples), random_accuracy(triples, pairs, num_samples))
+    print("Upper bound for any S(a1, a2, n):", triple_upper_bound(triples, pairs))
     num, denom = pair_upper_bound(triples, pairs)
-    print("Pair upper bound:", num, "/", denom, " = ", num/denom)
+    print("Upper bound for any S(a, n):", num, "/", denom, " = ", num/denom)
+    num, denom = single_upper_bound(triples, pairs)
+    print("Upper bound for any S(a):", num, "/", denom, " = ", num/denom)
 
     return 0
 
