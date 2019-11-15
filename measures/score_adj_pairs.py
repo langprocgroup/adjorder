@@ -239,7 +239,7 @@ if __name__ == '__main__':
     
 
     print("printing output ...")
-    outfile = open("results.csv", 'w')
+    outfile = open("scores.csv", 'w')
     outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,vd_awf_nwf,vd_awf_nct,vd_act_nwf,vd_act_nct,s_awf,s_acl\n")
     n = len(triples)
     for i, triple in enumerate(triples):
