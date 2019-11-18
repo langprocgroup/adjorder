@@ -97,10 +97,10 @@ if __name__ == '__main__':
     #ncl = noun cluster
     
     parser = argparse.ArgumentParser(description='score adj pairs')
-    parser.add_argument('vectors', type=str, help='GloVe file containing word vectors')
-    parser.add_argument('pairs', type=str, help='file containing [count adj noun] pairs')
-    parser.add_argument('triples', type=str, help='file containing [count adj adj noun] triples')
-    parser.add_argument('subj', type=str, help='file containing [adj subj] subjectivity ratings')
+    parser.add_argument('-v', '--vectors', nargs=1, dest='vectors', required=True, help='GloVe file containing word vectors')
+    parser.add_argument('-p', '--pairs', nargs=1, dest='pairs', required=True, help='file containing [count adj noun] pairs')
+    parser.add_argument('-t', '--triples', nargs=1, dest='triples', required=True, help='file containing [count adj adj noun] triples')
+    parser.add_argument('-s', '--subj', nargs=1, dest='subj', required=True, help='file containing [adj subj] subjectivity ratings')
     args = parser.parse_args()
 
     print("loading triples data from " + args.triples + " ...")
