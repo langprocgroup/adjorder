@@ -20,8 +20,11 @@ count,noun_word,noun_pos,adj1_word,adj2_word,adj1_pos,adj2_pos
 1,attitude,NN,nasty,rude,JJ,JJ
 1,authority,NN,enormous,moral,JJ,JJ
 1,beach,NN,warm,tropical,JJ,JJ
+1,behaviors,NNS,Major,bad,JJ,JJ
 1,behaviour,NN,collective,bad,JJ,JJ
 1,beliefs,NNS,fanatic,religious,JJ,JJ
+1,binds,NNS,tight,financial,JJ,JJ
+1,bioweaponeer,NN,Former,Russian,JJ,JJ
 1,bird,NN,loving,tame,JJ,JJ
 1,blanket,NN,good,warm,JJ,JJ
 1,brass,NN,top,military,JJ,JJ
@@ -115,6 +118,7 @@ count,noun_word,noun_pos,adj1_word,adj2_word,adj1_pos,adj2_pos
 1,Information,NN,Privileged,Confidential,JJ,JJ
 1,information,NN,sufficient,accurate,JJ,JJ
 1,injuries,NNS,severe,lifelong,JJ,JJ
+1,islamists,NNS,Egyptian,militant,JJ,JJ
 1,issue,NN,difficult,political,JJ,JJ
 2,judges,NNS,Republican,federal,JJ,JJ
 1,Kid,NN,New,Italian,JJ,JJ
@@ -159,6 +163,7 @@ count,noun_word,noun_pos,adj1_word,adj2_word,adj1_pos,adj2_pos
 1,object,NN,small,integral,JJ,JJ
 1,one,NN,fitted,black,JJ,JJ
 1,one,NN,only,bad,JJ,JJ
+1,organisation,NN,Palestinian,militant,JJ,JJ
 1,outlines,NNS,corrupt,social,JJ,JJ
 1,pain,NN,chronic,intractable,JJ,JJ
 1,partnership,NN,possible,new,JJ,JJ
@@ -220,6 +225,7 @@ count,noun_word,noun_pos,adj1_word,adj2_word,adj1_pos,adj2_pos
 1,stage,NN,new,upper,JJ,JJ
 1,start,NN,whole,new,JJ,JJ
 1,states,NNS,northeastern,Indian,JJ,JJ
+1,steakhouse,NN,Good,local,JJ,JJ
 1,store,NN,adorable,little,JJ,JJ
 1,store,NN,Good,clean,JJ,JJ
 1,streak,NN,hopeless,romantic,JJ,JJ
@@ -238,12 +244,14 @@ count,noun_word,noun_pos,adj1_word,adj2_word,adj1_pos,adj2_pos
 1,threat,NN,conventional,military,JJ,JJ
 1,times,NNS,hard,economic,JJ,JJ
 1,toast,NN,fabulous,French,JJ,JJ
+1,tradeoff,NN,bad,bad,JJ,JJ
 1,travellers,NNS,single,female,JJ,JJ
 1,travel,NN,free,international,JJ,JJ
 1,treatment,NN,qualified,medical,JJ,JJ
 1,treaty,NN,international,maritime,JJ,JJ
 1,trotters,NNS,big,long,JJ,JJ
 1,trotters,NNS,great,big,JJ,JJ
+1,tuning,NN,minor,fine,JJ,JJ
 1,unity,NN,total,absolute,JJ,JJ
 1,vessels,NNS,Indian,naval,JJ,JJ
 1,view,NN,whole,new,JJ,JJ
@@ -256,11 +264,13 @@ count,noun_word,noun_pos,adj1_word,adj2_word,adj1_pos,adj2_pos
 1,weapons,NNS,new,nuclear,JJ,JJ
 1,weather,NN,imminent,cold,JJ,JJ
 1,whale,NN,great,white,JJ,JJ
+1,whiteboard,NN,small,magnetic,JJ,JJ
 1,Windows,NNS,Prompt,Clean,JJ,JJ
 1,wolves,NNS,fleeting,lone,JJ,JJ
 1,woman,NN,beautiful,young,JJ,JJ
 1,woman,NN,funny,young,JJ,JJ
 1,world,NN,brave,new,JJ,JJ
+1,wrok,NN,Good,honest,JJ,JJ
 1,year,NN,Chinese,new,JJ,JJ
 1,year,NN,happy,new,JJ,JJ
 1,zoom,NN,wide,optical,JJ,JJ
