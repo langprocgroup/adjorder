@@ -1,18 +1,8 @@
-import sys, codecs, os, math
+import sys, codecs, os, math, argparse
 import pandas as pd
 import numpy as np
 from scipy.stats import entropy
-from scipy.spatial.distance import cosine
-from sklearn.cluster import KMeans
 from collections import Counter
-import subprocess, argparse
-
-def file_len(fname):
-    p = subprocess.Popen(['wc', '-l', fname], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    result, err = p.communicate()
-    if p.returncode != 0:
-        raise IOError(err)
-    return int(result.strip().split()[0])
 
 def print_progress(i, n):
     j = (i+1) / n
@@ -21,18 +11,6 @@ def print_progress(i, n):
     sys.stdout.flush()
     return i + 1
 
-def load_from_pickle(filename, objects):
-    f = open(filename, 'rb')
-    return_objects = []
-    for obj in objects:
-        return_objects.append(pickle.load(f))
-    return return_objects
-
-def save_to_pickle(filename, objects):
-    f = open(filename, 'wb')
-    for obj in objects:
-        pickle.dump(obj, f)
-
 def load_pairs(filename):
     pairs = pd.read_csv(filename, sep=",", dtype=str)
     pairs['awf'] = pairs['awf'].str.lower()
@@ -40,12 +18,24 @@ def load_pairs(filename):
     pairs['count'] = pd.to_numeric(pairs['count'])
     return pairs
 
-def load_triples(filename):
-    triples = []
-    with open(filename) as f:
-        for line in f:
-            triples.append(line.lower().replace("\n","").split(','))
-    return triples
+def load_test_data(filename, pair_acls, pair_ncls):
+    test_data = {}
+    awfs = []
+    nwfs = []
+    acls = []
+    ncls = []
+    df = pd.read_csv(filename, sep=",", dtype=str)[['count', 'adj1_word', 'adj2_word', 'noun_word']]
+    for w in ['noun_word', 'adj1_word', 'adj2_word']:
+        df[w] = df[w].str.lower()
+    df['count'] = pd.to_numeric(df['count'])
+    df = df.fillna('null') # treat instances of 'null' in df as strings, not NULL
+    test_data['triples'] = df.values.tolist()
+    test_data['awfs'] = np.unique(df[['adj1_word', 'adj2_word']].values)
+    test_data['nwfs'] = np.unique(df['noun_word'].values)
+    test_data['acls'] = pd.merge(pd.DataFrame(test_data['awfs']), pd.DataFrame.from_dict(pair_acls, orient='index'), how='inner', left_on=[0], right_index=True)['0_y'].unique()
+    test_data['ncls'] = pd.merge(pd.DataFrame(test_data['nwfs']), pd.DataFrame.from_dict(pair_ncls, orient='index'), how='inner', left_on=[0], right_index=True)['0_y'].unique()
+
+    return test_data
 
 def load_vectors(filename):
     df = pd.read_csv(filename, sep='["]* ["]*', header=None, error_bad_lines=False, engine='python')
@@ -59,23 +49,16 @@ def calc_pmi(pxy, px):
     #return math.log(pxy/px,2)
     return pxy-px
 
-def ic(d):
-    ents = {}
+def info_theory(d, n, start_ent):
+    integ_cost = {}
+    info_gain = {}
     for k in d:
-        ents[k] = entropy(list(Counter(d[k]).values()), base=2)
-    return ents
+        dist = list(Counter(d[k]).values())
+        ent = entropy(dist, base=2)
+        integ_cost[k] = ent
+        info_gain[k] = start_ent - (len(dist)/n) * ent
+    return integ_cost, info_gain
         
-def extract_vectors(vectors, pairs):
-    nv = pd.merge(vectors, pd.DataFrame(pairs.nwf.unique()), how='inner', left_on=[0], right_on=[0])
-    noun_vectors = np.array(nv[nv.columns[1:]].values).astype(float)
-    nouns = list(nv[0].values)
-    
-    av = pd.merge(vectors, pd.DataFrame(pairs.awf.unique()), how='inner', left_on=[0], right_on=[0])
-    adj_vectors = np.array(av[av.columns[1:]].values).astype(float)
-    adjs = list(av[0].values)
-
-    return noun_vectors, adj_vectors, nouns, adjs    
-
 if __name__ == '__main__':
     # awf = adjective wordform
     # acl = adjective cluster
@@ -83,17 +66,10 @@ if __name__ == '__main__':
     # ncl = noun cluster
     
     parser = argparse.ArgumentParser(description='score adj pairs')
-    parser.add_argument('-p', '--pairs', nargs=1, dest='pairs', required=True, help='file containing [count adj noun] pairs')
-    parser.add_argument('-t', '--triples', nargs=1, dest='triples', required=True, help='file containing [count adj adj noun] triples')
-    parser.add_argument('-s', '--subj', nargs=1, dest='subj', required=True, help='file containing [adj subj] subjectivity ratings')
+    parser.add_argument('-p', '--pairs', nargs=1, dest='pairs', required=True, help='comma-delimited file containing [count,awf,nwf,acl,ncl] for calculating predictors')
+    parser.add_argument('-t', '--test', nargs=1, dest='test_file', required=True, help='comma-delimited file containing [count,adj1_word,adj2_word,noun_word] for test')
+    parser.add_argument('-s', '--subj', nargs=1, dest='subj', required=True, help='comma-delimieted file containing [adj,subj] subjectivity ratings')
     args = parser.parse_args()
-
-    print("loading triples data from " + args.triples[0] + " ...")
-    triples = load_triples(args.triples[0])
-
-    print("loading subjectivities ...")
-    subjectivities = load_subj(args.subj[0]).set_index('predicate')
-    subj = subjectivities.to_dict()['response']
     
     print("loading pairs data from " + args.pairs[0] + " ...")
     pairs = load_pairs(args.pairs[0])
@@ -103,6 +79,13 @@ if __name__ == '__main__':
     acls = adf.set_index(['awf']).to_dict()['acl']
     ndf = pairs[['nwf', 'ncl']]
     ncls = ndf.set_index(['nwf']).to_dict()['ncl']
+
+    print("loading test data from " + args.test_file[0] + " ...")
+    test_data = load_test_data(args.test_file[0], acls, ncls)
+
+    print("loading subjectivities ...")
+    subjectivities = load_subj(args.subj[0]).set_index('predicate')
+    subj = subjectivities.to_dict()['response']
 
     print("adding pairs to dataframe ...")
     pairs['awf_nwf'] = pairs['awf'] + "_" + pairs['nwf']
@@ -154,48 +137,52 @@ if __name__ == '__main__':
 
     print("mapping adj to nouns ...")
     print(" -awf_to_nwfs")
-    awf_to_nwfs = {k: g["nwf"].tolist() for k,g in pairs.groupby('awf')}
+    awf_to_nwfs = {k: g["nwf"].tolist() for k,g in pairs.loc[pairs['awf'].isin(test_data['awfs'])].groupby('awf')}
 
     print(" -awf_to_ncls")
-    awf_to_ncls = {k: g["ncl"].tolist() for k,g in pairs.groupby('awf')}    
+    awf_to_ncls = {k: g["ncl"].tolist() for k,g in pairs.loc[pairs['awf'].isin(test_data['awfs'])].groupby('awf')}
 
     print(" -acl_to_nwfs")
-    acl_to_nwfs = {k: g["nwf"].tolist() for k,g in pairs.groupby('acl')}
+    acl_to_nwfs = {k: g["nwf"].tolist() for k,g in pairs.loc[pairs['acl'].isin(test_data['acls'])].groupby('acl')}
 
     print(" -acl_to_ncls")
-    acl_to_ncls = {k: g["ncl"].tolist() for k,g in pairs.groupby('acl')}
+    acl_to_ncls = {k: g["ncl"].tolist() for k,g in pairs.loc[pairs['acl'].isin(test_data['acls'])].groupby('acl')}
 
     print("mapping nouns to adjs ...")
     print(" -nwf_to_awfs")
-    nwf_to_awfs = {k: g["awf"].tolist() for k,g in pairs.groupby('nwf')}
+    nwf_to_awfs = {k: g["awf"].tolist() for k,g in pairs.loc[pairs['nwf'].isin(test_data['nwfs'])].groupby('nwf')}
 
     print(" -nwf_to_acls")
-    nwf_to_acls = {k: g["acl"].tolist() for k,g in pairs.groupby('nwf')}        
+    nwf_to_acls = {k: g["acl"].tolist() for k,g in pairs.loc[pairs['nwf'].isin(test_data['nwfs'])].groupby('nwf')}
 
     print(" -ncl_to_awfs")
-    ncl_to_awfs = {k: g["awf"].tolist() for k,g in pairs.groupby('ncl')}
+    ncl_to_awfs = {k: g["awf"].tolist() for k,g in pairs.loc[pairs['ncl'].isin(test_data['ncls'])].groupby('ncl')}
 
     print(" -ncl_to_acls")
-    ncl_to_acls = {k: g["acl"].tolist() for k,g in pairs.groupby('ncl')}
+    ncl_to_acls = {k: g["acl"].tolist() for k,g in pairs.loc[pairs['ncl'].isin(test_data['ncls'])].groupby('ncl')}
 
     print("calculating entropies ...")
     print(" -awf_nwf")
-    awf_nwf_ents = ic(awf_to_nwfs)
+    start_ent_nwf = entropy(list(Counter(pairs['nwf'].values).values()), base=2)
+    n_nwf = len(test_data['nwfs'])
+    awf_nwf_ic, awf_nwf_ig = info_theory(awf_to_nwfs, n_nwf, start_ent_nwf)
     
     print(" -awf_ncl")
-    awf_ncl_ents = ic(awf_to_ncls)
+    start_ent_ncl = entropy(list(Counter(pairs['ncl'].values).values()), base=2)
+    n_ncl = len(test_data['ncls'])
+    awf_ncl_ic, awf_ncl_ig = info_theory(awf_to_ncls, n_ncl, start_ent_ncl)
     
     print(" -acl_nwf")
-    acl_nwf_ents = ic(acl_to_nwfs)
+    acl_nwf_ic, acl_nwf_ig = info_theory(acl_to_nwfs, n_nwf, start_ent_nwf)
 
     print(" -acl_ncl")
-    acl_ncl_ents = ic(acl_to_ncls)
+    acl_ncl_ic, acl_ncl_ig = info_theory(acl_to_ncls, n_ncl, start_ent_ncl)
 
     print("printing output to scores.csv ...")
     outfile = open("scores.csv", 'w')
-    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,s_awf,s_acl\n")
-    n = len(triples)
-    for i, triple in enumerate(triples):
+    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,s_awf,s_acl,ig_awf_nwf,ig_awf_ncl,ig_acl_nwf,ig_acl_ncl\n")
+    n = len(test_data['triples'])
+    for i, triple in enumerate(test_data['triples']):
         print_progress(i+1, n)
         nwf = triple[3]
         ncl = None
@@ -262,19 +249,41 @@ if __name__ == '__main__':
             ic_acl_nwf = None
             ic_acl_ncl = None
             try:
-                ic_awf_nwf = awf_nwf_ents[awf]
+                ic_awf_nwf = awf_nwf_ic[awf]
             except:
                 pass
             try:
-                ic_awf_ncl = awf_ncl_ents[awf]
+                ic_awf_ncl = awf_ncl_ic[awf]
             except:
                 pass
             try:
-                ic_acl_nwf = acl_nwf_ents[acl]
+                ic_acl_nwf = acl_nwf_ic[acl]
             except:
                 pass
             try:
-                ic_acl_ncl = acl_ncl_ents[acl]
+                ic_acl_ncl = acl_ncl_ic[acl]
+            except:
+                pass
+
+            # info gain
+            ig_awf_nwf = None
+            ig_awf_ncl = None
+            ig_acl_nwf = None
+            ig_acl_ncl = None
+            try:
+                ig_awf_nwf = awf_nwf_ig[awf]
+            except:
+                pass
+            try:
+                ig_awf_ncl = awf_ncl_ig[awf]
+            except:
+                pass
+            try:
+                ig_acl_nwf = acl_nwf_ig[acl]
+            except:
+                pass
+            try:
+                ig_acl_ncl = acl_ncl_ig[acl]
             except:
                 pass
 
@@ -309,11 +318,11 @@ if __name__ == '__main__':
             except:
                 pass
             try:
-                s_acl = subj_clusters[int(acl)]
+                s_acl = subj_clusters[acl]
             except:
                 pass
 
-            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(s_awf) + "," + str(s_acl) + "\n")
+            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(s_awf) + "," + str(s_acl) + "," + str(ig_awf_nwf) + "," + str(ig_acl_nwf) + "," + str(ig_awf_ncl) + "," + str(ig_acl_ncl) + "\n")
                 
     outfile.close()
     
