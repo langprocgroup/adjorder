@@ -2,7 +2,7 @@ import subprocess, argparse, sys
 import numpy as np
 import pandas as pd
 
-def load_results(filename):
+def load_scores(filename):
     df = pd.read_csv(filename, sep=",")
     return df
 
@@ -14,27 +14,27 @@ def print_progress(i, n):
     return i + 1
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='predict triples')
-    parser.add_argument('results', type=str, help='comma-separated results file')
+    parser = argparse.ArgumentParser(description='calculate deltas for each predictor')
+    parser.add_argument('scores', type=str, help='comma-separated scores file')
     args = parser.parse_args()
     
-    results = load_results(args.results)
+    scores = load_scores(args.scores)
 
     n_meta = 7
-    zeros = np.zeros((1, results.shape[1] - n_meta)).astype(int)
+    zeros = np.zeros((1, scores.shape[1] - n_meta)).astype(int)
     
-    correct = pd.DataFrame(data=zeros, columns=results.columns[n_meta:])
+    correct = pd.DataFrame(data=zeros, columns=scores.columns[n_meta:])
     incorrect = correct.copy()
     unknown = correct.copy()
     tie = correct.copy()
 
-    n = results.shape[0]
-    outfile = open("output.csv", 'w')
-    outfile.write("id,predictor,diff,result\n")
+    n = scores.shape[0]
+    outfile = open("deltas.csv", 'w')
+    outfile.write("id,predictor,delta,result\n")
     
-    for i in range(0, results.shape[0], 2):
-        row1 = results.iloc[i]
-        row2 = results.iloc[i+1]
+    for i in range(0, scores.shape[0], 2):
+        row1 = scores.iloc[i]
+        row2 = scores.iloc[i+1]
 
         if row1['id'] != row2['id'] or row1['idx'] != 0 or row2['idx'] != 1:
             print("something's wrong with order of triples")
@@ -82,10 +82,3 @@ if __name__ == '__main__':
             print("pass: {:.4f}".format(p/(total)) + " (" + str(p) + "/" + str(total) + ")")
             print("fail: {:.4f}".format(f/(total)) + " (" + str(f) + "/" + str(total) + ")")            
             print(" tie: {:.4f}".format(t/(total)) + " (" + str(t) + "/" + str(total) + ")")
-            #print("unknown: {:.4f}".format(u/(p+f+u+t)) + " (" + str(u) + "/" + str(p+f+u+t) + ")")
-
-
-
-        
-
-    
