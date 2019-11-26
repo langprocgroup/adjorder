@@ -164,12 +164,12 @@ if __name__ == '__main__':
     print("calculating entropies ...")
     print(" -awf_nwf")
     start_ent_nwf = entropy(list(Counter(pairs['nwf'].values).values()), base=2)
-    n_nwf = len(test_data['nwfs'])
+    n_nwf = len(pairs.nwf.unique())
     awf_nwf_ic, awf_nwf_ig = info_theory(awf_to_nwfs, n_nwf, start_ent_nwf)
     
     print(" -awf_ncl")
     start_ent_ncl = entropy(list(Counter(pairs['ncl'].values).values()), base=2)
-    n_ncl = len(test_data['ncls'])
+    n_ncl = len(pairs.ncl.unique())
     awf_ncl_ic, awf_ncl_ig = info_theory(awf_to_ncls, n_ncl, start_ent_ncl)
     
     print(" -acl_nwf")
