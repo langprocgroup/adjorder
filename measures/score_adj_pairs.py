@@ -84,7 +84,7 @@ if __name__ == '__main__':
     test_data = load_test_data(args.test_file[0], acls, ncls)
 
     print("loading subjectivities ...")
-    subjectivities = load_subj(args.subj[0]).set_index('predicate')
+    subjectivities = load_subj(args.subj[0])[['predicate', 'response']].set_index('predicate')
     subj = subjectivities.to_dict()['response']
 
     print("adding pairs to dataframe ...")
