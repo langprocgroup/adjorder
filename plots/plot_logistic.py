@@ -84,6 +84,6 @@ if __name__ == '__main__':
         plt.xlabel("delta")
         plt.ylabel("probability")
         plt.legend(loc = 'center left', bbox_to_anchor=(0, 0.25))
-        print(title + "\t" + str(n) + "\t{:4f}\t{:4f}".format(s/n, auc)) 
+        print(title + "\tn: cp " + str(n) + "\tacc: {:4f}\tauc: {:4f}".format(s/n, auc)) 
         plt.tight_layout()
         plt.savefig("predictors.png", bbox_inches='tight', pad_inches=0)
