@@ -66,21 +66,21 @@ Output is a comma-delimited `scores.csv` with the following columns:
 1. `acl` -- adjective cluster ID
 1. `ncl` -- noun cluster ID
 1. various predictors named according to the following scheme:
-    * `p_` -- log probability
     * `ic_` -- integration cost
     * `ig_` -- information gain
+    * `p_` -- log probability
     * `pmi_` -- pointwise mutual information
     * `subj_` -- subjectivity rating
 
 ## Running predictors
 
-The predictors calculated and reported in `scores.csv` can be run with `python measures/predict.py scores.csv`. Output is `delta.csv`, a comma-delimited file with the following columns:
+The predictors calculated and reported in `scores.csv` can be run with `python measures/predict.py scores.csv`. Output is `deltas.csv`, a comma-delimited file with the following columns:
 1. `id` -- the ID of a triple in `$TRIPLES`
 1. `predictor` -- the predictor being run
 1. `delta` -- the (absolute) difference between the predictor score for each adjective
 1. `result` -- whether the adjective with the smallest predictor comes first (0) or second (1).
 
-Note that predictors with `None` values in `scores.csv` will not be included in `delta.csv`.
+Note that predictors with `None` values in `scores.csv` will not be included in `deltas.csv`. This can happen due to out-of-vocabulary words, adjectives not rated for subjectivity, and so on.
 
 ## Generating plots
 
