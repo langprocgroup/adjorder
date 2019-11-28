@@ -1,0 +1,269 @@
+---
+title: "Adjective Order Analysis"
+author: "Richard Futrell, William Dyer, & Greg Scontras"
+date: "11/27/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list=ls())
+library(plotrix)
+library(tidyverse)
+library(stringr)
+
+STRICT_INCLUSION = TRUE
+
+```
+
+## Load data
+
+```{r}
+scores = read_csv("../scores.csv", na=c("None"))
+```
+
+## Some useful functions
+```{r}
+
+PREDICTORS = c(
+"p_awf","p_acl","p_nwf","p_ncl","p_awf_nwf","p_awf_ncl","p_acl_nwf","p_acl_ncl","ic_awf_nwf","ic_awf_ncl","ic_acl_nwf","ic_acl_ncl","pmi_awf_nwf","pmi_awf_ncl","pmi_acl_nwf","pmi_acl_ncl","s_awf","s_acl","ig_awf_nwf","ig_awf_ncl","ig_acl_nwf","ig_acl_ncl"
+)
+
+get_deltas = function(d) {
+  # Given scores, return the difference in scores for the first adjective minus the second adjective, for all predictors
+  d %>% 
+    select(-awf, -nwf, -acl, -ncl) %>%
+    gather(predictor, value, -id, -idx, -count) %>%
+    spread(idx, value) %>%
+    mutate(delta=`0` - `1`) %>%
+    select(-`0`, -`1`) %>%
+    spread(predictor, delta)
+}
+
+accuracy = function(m, d) {
+  # Accuracy of a model m for predicting data d, along with standard error and 95% confidence intervals according to the Normal approximation to the Binomial confidence interval
+  d %>% 
+    mutate(predicted = predict(m, d) > .5,
+           correct = predicted == alphabetical) %>%
+    summarise(
+      m=mean(correct, na.rm=T),
+      se=std.error(correct, na.rm=T),
+      upper=m+1.96*se,
+      lower=m-1.96*se,
+      n=sum(!is.na(correct))
+    )
+  }
+
+```
+
+
+## Data manipulation
+```{r}
+indices = scores %>%
+  select(id, idx, count, awf, nwf) %>%
+  unite(anwf, awf, nwf) %>%
+  spread(idx, anwf) %>%
+  rename(a1=`0`, a2=`1`) %>%
+  separate(a1, into=c("a1", "n")) %>%
+  separate(a2, into=c("a2", "n2")) %>%
+  select(-n2) %>%
+  select(id, count, a1, a2, n) %>%
+  mutate(alphabetical = a1 < a2)
+
+replicate_row = function(r,n) {
+    r[rep(1:nrow(r),n),1:ncol(r)]
+}
+
+unroll = function(d) {
+    replicate_row(d, d$count)
+}
+
+d = scores %>%
+  get_deltas() %>%
+  inner_join(indices) %>%
+  gather(predictor, value, -id, -count, -a1, -a2, -n, -alphabetical) %>%
+  group_by(id) %>%
+    mutate(any_na=any(is.na(value))) %>%
+    ungroup() %>%
+  filter(!STRICT_INCLUSION | !any_na) %>%
+  mutate(value=if_else(alphabetical, value, -value)) %>%
+  spread(predictor, value) %>%
+  unroll() %>%
+  select(-count)
+  
+```
+
+
+## Fit regressions
+```{r}
+
+plusify = function(xs) {
+  str_c(xs, collapse=" + ")
+}
+
+fit_model_from_predictors = function(predictors, data) {
+    formula = as.formula(str_c("alphabetical ~ ", plusify(predictors)))
+    glm(formula, data=data)
+}
+
+fit_models = function(predictors, data) {
+  map(predictors, function(p) {fit_model_from_predictors(p, data)})
+}
+
+```
+
+## Summarize accuracies
+
+```{r}
+get_accuracy_table = function(predictors, train_data, test_data) {
+  predictors %>%
+    fit_models(train_data) %>%
+    map(function(m) {accuracy(m, test_data)}) %>%
+    reduce(bind_rows) %>%
+    mutate(predictors=as.character(map(predictors, plusify)))
+}
+
+VS_SUBJECTIVITY_WF = list(
+  c("s_awf", "pmi_awf_nwf"),
+  c("s_awf", "ic_awf_nwf"),
+  c("s_awf", "ig_awf_nwf")
+)
+
+VS_SUBJECTIVITY_CL = list(
+  c("s_acl", "pmi_acl_ncl"),
+  c("s_acl", "ic_acl_ncl"),
+  c("s_acl", "ig_acl_ncl")
+)
+```
+
+```{r}
+get_accuracy_table(PREDICTORS, d, d) %>% arrange(-m)
+```
+
+
+```{r}
+get_accuracy_table(VS_SUBJECTIVITY_WF, d, d)
+```
+
+## Trying to resolve the difference between the results here and plot_logistic.py
+
+I got these results from running the python code on a subset of `deltas.csv`:
+
+```
+p(awf), n: 109340, acc: 0.556329, auc: 0.685794			.5982
+p(acl), n: 104675, acc: 0.524824, auc: 0.449041				.6272
+p(awf|ncl), n: 101100, acc: 0.501434, auc: 0.464636			
+p(acl|nwf), n: 101100, acc: 0.501434, auc: 0.464636
+p(acl|ncl), n: 104425, acc: 0.542169, auc: 0.501447
+ic(awf,nwf), n: 109343, acc: 0.532974, auc: 0.493959			.6458
+ic(awf,ncl), n: 109343, acc: 0.608919, auc: 0.804693			.6114
+ic(acl,nwf), n: 104675, acc: 0.536097, auc: 0.345422			.6589
+ic(acl,ncl), n: 104675, acc: 0.595605, auc: 0.793855			.6041
+pmi(awf;nwf), n: 103239, acc: 0.645192, auc: 0.809302		.6662
+pmi(awf;ncl), n: 107053, acc: 0.564487, auc: 0.649492		.5960
+pmi(acl;nwf), n: 102390, acc: 0.635541, auc: 0.832347		.6386
+pmi(acl;ncl), n: 104511, acc: 0.595105, auc: 0.810345			.5943
+subj(acl), n: 79067, acc: 0.654875, auc: 0.773591			.6446
+ig(awf,nwf), n: 109342, acc: 0.642379, auc: 0.683299			.6314
+ig(awf,ncl), n: 104674, acc: 0.618587, auc: 0.578816			.6608
+ig(acl,nwf), n: 109342, acc: 0.635346, auc: 0.705307			.6289
+ig(acl,ncl), n: 104674, acc: 0.656792, auc: 0.818226			.6468
+p(awf|nwf), n: 98837, acc: 0.537208, auc: 0.543262
+subj(awf), n: 26665, acc: 0.677592, auc: 0.754101			.6593
+```
+
+They don't match the accuracies that I produced here.
+
+What is going on?
+
+First let's see if we reproduce the Python results restricting our attention ot the ID's in deltas.csv:
+```{r}
+deltas = read_csv("../deltas.csv") %>%
+  mutate(value=if_else(result == 1, delta, -delta)) %>%
+  arrange(id, predictor)
+ok_ids = deltas %>% pull(id) %>% unique()
+d_restricted = filter(d, id %in% ok_ids)
+get_accuracy_table(PREDICTORS, d_restricted, d_restricted)
+
+# No, it's different
+
+```
+
+Would we get the right results applying logistic regression to the values in `deltas.csv`?
+
+```{r}
+d2 = deltas %>% 
+  select(-result, -delta) %>% 
+  spread(predictor, value) %>%
+  inner_join(indices) %>%
+  mutate(alphabetical=a1<a2) %>%
+  mutate(p_nwf=0, p_ncl=0)
+
+get_accuracy_table(PREDICTORS, d2, d2)
+
+```
+
+No, the accuracies are terrible. So maybe the problem is in the code that generates deltas.csv.
+
+Time to look at the actual data.
+
+
+Make sure the values in `deltas.csv` match the values calculated locally:
+```{r}
+
+is_close = function(x, y) {
+  eps = .00001
+  abs(x - y) < eps 
+}
+
+for(predictor in PREDICTORS) {
+  if(predictor %in% unique(deltas$predictor)) {
+  joined = inner_join(select_(d, "id", predictor), select_(d2, "id", predictor), by=c("id"))
+  names(joined) = c("id", "local", "from_file")
+  print(predictor)
+  print(all(is_close(joined$local, joined$from_file), na.rm=T))
+  }
+}
+
+```
+
+They do not, but the only discrepancy is in the sign.
+
+For example, `ic_acl_nwf` has 1.23 in what we computed locally, but -1.23 in deltas.csv.
+What should it be?
+
+```{r}
+filter(scores, id==0) %>% select(id, idx, awf, nwf, ic_acl_nwf)
+```
+
+The answer should be positive. So this should get a 1 for "predicted" in deltas, but it doesn't: it gets a 0. Why? Let's look in scores.csv.
+
+The accuracy values coming out of `plot_logistic.py` come from the `result` column of deltas. Let's see if those match what I'm getting.
+
+```{r}
+delta_accs = deltas %>% 
+  group_by(predictor) %>% 
+    summarise(max(mean(result, na.rm=T), 1-mean(result, na.rm=T))) %>%
+    ungroup()
+```
+
+Yes, these match the accuracies exactly. What about our version of the differences?
+
+```{r}
+d_like_deltas = d %>% 
+  gather(predictor, value, -id, -a1, -a2, -n, -alphabetical, -any_na) %>%
+  mutate(result=value>0) %>%
+  select(id, a1, a2, n, predictor, value, result) %>% 
+  arrange(id, predictor)
+
+# The accuracies coming out of d_like_deltas are very bad, much lower than the logistic regression accuracies. So, I think there is a problem in d.
+# The diffs are the same from deltas to d, up to the sign.
+# So, the problem must be in the sign.
+# 
+  
+
+
+```
+  
+
+  
