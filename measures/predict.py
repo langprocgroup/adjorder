@@ -32,9 +32,9 @@ if __name__ == '__main__':
     outfile = open("deltas.csv", 'w')
     outfile.write("id,predictor,delta,result\n")
     
-    for i in range(0, scores.shape[0], 2):
-        row1 = scores.iloc[i]
-        row2 = scores.iloc[i+1]
+    for i in range(0, scores.shape[0], 2): # for each AAN triple...
+        row1 = scores.iloc[i] # the attested first adjective 
+        row2 = scores.iloc[i+1] # the attested second adjective
 
         if row1['id'] != row2['id'] or row1['idx'] != 0 or row2['idx'] != 1:
             print("something's wrong with order of triples")
@@ -42,23 +42,24 @@ if __name__ == '__main__':
             print(row2)
             exit()
 
-        count = int(row1['count'])
-        for col in correct.columns:
+        # correct, unknown, tie, and incorrect are dataframes
+        # where each column is a predictor, each row is an AAN triple, and the value is the count
+        count = int(row1['count']) 
+        for col in correct.columns: 
             if row1[col] == 'None' or row2[col] == 'None':
                 unknown[col] += count
             elif row1[col] == row2[col]:
                 tie[col] += count
             else:
-                if row1[col] > row2[col]:
+                if float(row1[col]) > float(row2[col]): # if S(a1, n) > S(a2, n), say predicted=1
                     predicted = '1'
                     correct[col] += count
-                else:
+                else: # otherwise say predicted=0 and count it as wrong
                     predicted = '0'
                     incorrect[col] += count
-                outfile.write(str(row1['id']) + "," + col + "," + str(abs(float(row1[col]) - float(row2[col]))) + "," + str(predicted) + "\n")
-
+                for _ in range(count): # write the number of rows corresponding to the count
+                    outfile.write(str(row1['id']) + "," + col + "," + str(float(row1[col]) - float(row2[col])) + "," + str(predicted) + "\n")
             print_progress(i+1, n)
-
     outfile.close()
 
     print("")
