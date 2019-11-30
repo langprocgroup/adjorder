@@ -58,7 +58,7 @@ if __name__ == '__main__':
                     predicted = '0'
                     incorrect[col] += count
                 for _ in range(count): # write the number of rows corresponding to the count
-                    outfile.write(str(row1['id']) + "," + col + "," + str(float(row1[col]) - float(row2[col])) + "," + str(predicted) + "\n")
+                    outfile.write(str(row1['id']) + "," + col + "," + str(abs(float(row1[col]) - float(row2[col]))) + "," + str(predicted) + "\n")
             print_progress(i+1, n)
     outfile.close()
 
