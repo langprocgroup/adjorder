@@ -1,8 +1,10 @@
+import subprocess, argparse, sys
+import itertools
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn import linear_model, metrics
-import subprocess, argparse, sys, random
 
 def load_file(filename):
     df = pd.read_csv(filename, sep=",")
@@ -25,13 +27,22 @@ if __name__ == '__main__':
 
     df = load_file(args.inputfile)
     clf = linear_model.LogisticRegression(C=1e5, solver='lbfgs')
-    plt.figure(1,figsize=(20,12))  
-        
-    for i, predictor in enumerate(df.predictor.unique()):
-        X = []
-        y = []
+    plt.figure(1,figsize=(20,12))
 
+    single_predictors = df.predictor.unique()
+    pair_predictors = itertools.combinations(single_predictors, 2)
+    all_predictors = itertools.chain(single_predictors, pair_predictors)
+
+    # Choose sign of delta and 1/0 of result according to alphabetical order,
+    # which needs to be read out of scores.csv...
+
+    # Collapse deltas so each predictor is a column
+    # In R this would be spread(deltas, predictor, delta)
+        
+    for i, predictor in enumerate(single_predictors):
+        # Get the rows matching the predictor...
         X = np.array(df.loc[df['predictor'] == predictor]['delta'].values).astype('float').reshape(-1,1)
+        # Try to predict "result" (are we right or not)
         y = np.array(df.loc[df['predictor'] == predictor]['result'].values).astype('int')
 
         if np.average(y) < 0.5:
