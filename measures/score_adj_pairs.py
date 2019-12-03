@@ -46,18 +46,24 @@ def load_subj(filename):
     return df
 
 def calc_pmi(pxy, px):
-    #return math.log(pxy/px,2)
     return pxy-px
 
-def info_theory(d, n, start_ent):
-    integ_cost = {}
-    info_gain = {}
-    for k in d:
-        dist = list(Counter(d[k]).values())
-        ent = entropy(dist, base=2)
-        integ_cost[k] = ent
-        info_gain[k] = start_ent - (len(dist)/n) * ent
-    return integ_cost, info_gain
+def info_theory(maps, counts):
+    ic = {}
+    ig = {}
+    start_ent = entropy(counts['count'].values, base=2)
+    for i,k in enumerate(maps):
+        k_list = list(set(maps[k]))
+        yes_dist = pd.merge(counts, pd.DataFrame(k_list), left_index=True, right_on=[0])['count'].values
+        no_dist = counts[~counts.index.isin(k_list)]['count'].values
+        ent_yes = entropy(yes_dist, base=2)
+        ent_no = entropy(no_dist, base=2)
+        n_yes = np.sum(yes_dist)
+        n_no = np.sum(no_dist)
+        n_all = n_yes + n_no
+        ic[k] = ent_yes
+        ig[k] = start_ent - (((n_yes/n_all) * ent_yes) + ((n_no/n_all) * ent_no))
+    return ic, ig
         
 if __name__ == '__main__':
     # awf = adjective wordform
@@ -89,8 +95,6 @@ if __name__ == '__main__':
 
     print("adding pairs to dataframe ...")
     pairs['awf_nwf'] = pairs['awf'] + "_" + pairs['nwf']
-    pairs['awf_ncl'] = pairs['awf'] + "_" + pairs['ncl']
-    pairs['acl_nwf'] = pairs['acl'] + "_" + pairs['nwf']
     pairs['acl_ncl'] = pairs['acl'] + "_" + pairs['ncl']
 
     print("calculating cluster subjectivities ...")
@@ -119,14 +123,6 @@ if __name__ == '__main__':
     awf_nwf_counts = pd.pivot_table(pairs[['count', 'awf_nwf']], index=['awf_nwf'], values=['count', 'awf_nwf'], aggfunc=np.sum)
     awf_nwf_probs = awf_nwf_counts.divide(np.sum(awf_nwf_counts['count'])).to_dict()['count']
 
-    print(" -awf_ncl")
-    awf_ncl_counts = pd.pivot_table(pairs[['count', 'awf_ncl']], index=['awf_ncl'], values=['count', 'awf_ncl'], aggfunc=np.sum)
-    awf_ncl_probs = awf_ncl_counts.divide(np.sum(awf_ncl_counts['count'])).to_dict()['count']
-
-    print(" -acl_nwf")
-    acl_nwf_counts = pd.pivot_table(pairs[['count', 'acl_nwf']], index=['acl_nwf'], values=['count', 'acl_nwf'], aggfunc=np.sum)
-    acl_nwf_probs = acl_nwf_counts.divide(np.sum(acl_nwf_counts['count'])).to_dict()['count']
-
     print(" -acl_ncl")
     acl_ncl_counts = pd.pivot_table(pairs[['count', 'acl_ncl']], index=['acl_ncl'], values=['count', 'acl_ncl'], aggfunc=np.sum)
     acl_ncl_probs = acl_ncl_counts.divide(np.sum(acl_ncl_counts['count'])).to_dict()['count']
@@ -138,49 +134,27 @@ if __name__ == '__main__':
     print("mapping adj to nouns ...")
     print(" -awf_to_nwfs")
     awf_to_nwfs = {k: g["nwf"].tolist() for k,g in pairs.loc[pairs['awf'].isin(test_data['awfs'])].groupby('awf')}
-
-    print(" -awf_to_ncls")
-    awf_to_ncls = {k: g["ncl"].tolist() for k,g in pairs.loc[pairs['awf'].isin(test_data['awfs'])].groupby('awf')}
-
-    print(" -acl_to_nwfs")
-    acl_to_nwfs = {k: g["nwf"].tolist() for k,g in pairs.loc[pairs['acl'].isin(test_data['acls'])].groupby('acl')}
-
+        
     print(" -acl_to_ncls")
     acl_to_ncls = {k: g["ncl"].tolist() for k,g in pairs.loc[pairs['acl'].isin(test_data['acls'])].groupby('acl')}
-
+    
     print("mapping nouns to adjs ...")
     print(" -nwf_to_awfs")
     nwf_to_awfs = {k: g["awf"].tolist() for k,g in pairs.loc[pairs['nwf'].isin(test_data['nwfs'])].groupby('nwf')}
-
-    print(" -nwf_to_acls")
-    nwf_to_acls = {k: g["acl"].tolist() for k,g in pairs.loc[pairs['nwf'].isin(test_data['nwfs'])].groupby('nwf')}
-
-    print(" -ncl_to_awfs")
-    ncl_to_awfs = {k: g["awf"].tolist() for k,g in pairs.loc[pairs['ncl'].isin(test_data['ncls'])].groupby('ncl')}
 
     print(" -ncl_to_acls")
     ncl_to_acls = {k: g["acl"].tolist() for k,g in pairs.loc[pairs['ncl'].isin(test_data['ncls'])].groupby('ncl')}
 
     print("calculating entropies ...")
-    print(" -awf_nwf")
-    start_ent_nwf = entropy(list(Counter(pairs['nwf'].values).values()), base=2)
-    n_nwf = len(pairs.nwf.unique())
-    awf_nwf_ic, awf_nwf_ig = info_theory(awf_to_nwfs, n_nwf, start_ent_nwf)
+    print(" -awfs")
+    awf_nwf_ic, awf_nwf_ig = info_theory(awf_to_nwfs, nwf_counts)
     
-    print(" -awf_ncl")
-    start_ent_ncl = entropy(list(Counter(pairs['ncl'].values).values()), base=2)
-    n_ncl = len(pairs.ncl.unique())
-    awf_ncl_ic, awf_ncl_ig = info_theory(awf_to_ncls, n_ncl, start_ent_ncl)
-    
-    print(" -acl_nwf")
-    acl_nwf_ic, acl_nwf_ig = info_theory(acl_to_nwfs, n_nwf, start_ent_nwf)
+    print(" -acls")
+    acl_ncl_ic, acl_ncl_ig = info_theory(acl_to_ncls, ncl_counts)
 
-    print(" -acl_ncl")
-    acl_ncl_ic, acl_ncl_ig = info_theory(acl_to_ncls, n_ncl, start_ent_ncl)
-
-    print("printing output to scores.csv ...")
+    print("\n\nprinting output to scores.csv ...")
     outfile = open("scores.csv", 'w')
-    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_awf_ncl,p_acl_nwf,p_acl_ncl,ic_awf_nwf,ic_awf_ncl,ic_acl_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_awf_ncl,pmi_acl_nwf,pmi_acl_ncl,s_awf,s_acl,ig_awf_nwf,ig_awf_ncl,ig_acl_nwf,ig_acl_ncl\n")
+    outfile.write("id,idx,count,awf,nwf,acl,ncl,p_awf,p_acl,p_nwf,p_ncl,p_awf_nwf,p_acl_ncl,ic_awf_nwf,ic_acl_ncl,pmi_awf_nwf,pmi_acl_ncl,s_awf,s_acl,ig_awf_nwf,ig_acl_ncl\n")
     n = len(test_data['triples'])
     for i, triple in enumerate(test_data['triples']):
         print_progress(i+1, n)
@@ -203,8 +177,6 @@ if __name__ == '__main__':
             p_nwf = None
             p_ncl = None
             p_awf_nwf = None
-            p_awf_ncl = None
-            p_acl_nwf = None
             p_acl_ncl = None         
             try:
                 p_awf = math.log(awf_probs[awf],2)
@@ -228,16 +200,6 @@ if __name__ == '__main__':
             except:
                 pass
             try:
-                nwf2acl = nwf_to_acls[nwf]
-                if p_awf != None: p_awf_ncl = math.log(Counter(nwf2acl)[acl]/len(nwf2acl),2)
-            except:
-                pass
-            try:
-                nwf2acl = nwf_to_acls[nwf]
-                if acl != None: p_acl_nwf = math.log(Counter(nwf2acl)[acl]/len(nwf2acl),2)
-            except:
-                pass
-            try:
                 ncl2acl = ncl_to_acls[ncl]
                 if acl != None: p_acl_ncl = math.log(Counter(ncl2acl)[acl]/len(ncl2acl),2)
             except:
@@ -245,19 +207,9 @@ if __name__ == '__main__':
 
             # integration cost
             ic_awf_nwf = None
-            ic_awf_ncl = None
-            ic_acl_nwf = None
             ic_acl_ncl = None
             try:
                 ic_awf_nwf = awf_nwf_ic[awf]
-            except:
-                pass
-            try:
-                ic_awf_ncl = awf_ncl_ic[awf]
-            except:
-                pass
-            try:
-                ic_acl_nwf = acl_nwf_ic[acl]
             except:
                 pass
             try:
@@ -267,19 +219,9 @@ if __name__ == '__main__':
 
             # info gain
             ig_awf_nwf = None
-            ig_awf_ncl = None
-            ig_acl_nwf = None
             ig_acl_ncl = None
             try:
                 ig_awf_nwf = awf_nwf_ig[awf]
-            except:
-                pass
-            try:
-                ig_awf_ncl = awf_ncl_ig[awf]
-            except:
-                pass
-            try:
-                ig_acl_nwf = acl_nwf_ig[acl]
             except:
                 pass
             try:
@@ -289,22 +231,11 @@ if __name__ == '__main__':
 
             # pmi
             pmi_awf_nwf = None
-            pmi_awf_ncl = None
-            pmi_acl_nwf = None
             pmi_acl_ncl = None
             try:
                 pmi_awf_nwf = calc_pmi(p_awf_nwf, p_awf)
             except:
                 pass
-            try:
-                pmi_awf_ncl = calc_pmi(p_awf_ncl, p_awf)
-            except:
-                pass
-            try:
-                pmi_acl_nwf = calc_pmi(p_acl_nwf, p_acl)
-            except:
-                pass
-
             try:
                 pmi_acl_ncl = calc_pmi(p_acl_ncl, p_acl)
             except:
@@ -322,7 +253,7 @@ if __name__ == '__main__':
             except:
                 pass
 
-            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_awf_ncl) + "," + str(p_acl_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_awf_ncl) + "," + str(ic_acl_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_awf_ncl) + "," + str(pmi_acl_nwf) + "," + str(pmi_acl_ncl) + "," + str(s_awf) + "," + str(s_acl) + "," + str(ig_awf_nwf) + "," + str(ig_acl_nwf) + "," + str(ig_awf_ncl) + "," + str(ig_acl_ncl) + "\n")
+            outfile.write(str(i) + "," + str(j) + "," + str(triple[0]) + "," + awf + "," + nwf + "," + str(acl) + "," + str(ncl) + "," + str(p_awf) + "," + str(p_acl) + "," + str(p_nwf) + "," + str(p_ncl) + "," + str(p_awf_nwf) + "," + str(p_acl_ncl) + "," + str(ic_awf_nwf) + "," + str(ic_acl_ncl) + "," + str(pmi_awf_nwf) + "," + str(pmi_acl_ncl) + "," + str(s_awf) + "," + str(s_acl) + "," + str(ig_awf_nwf) + "," + str(ig_acl_ncl) + "\n")
                 
     outfile.close()
     
