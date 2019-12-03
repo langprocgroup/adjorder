@@ -35,8 +35,6 @@ and run the following to just get all the adjectives:
 cat $CORPORA | python extract_conllu.py a > a.csv
 sh csvcount.sh a.csv > a_counts.csv
 ```
-## Choosing a k for clusters
-
 ## Clustering (k-means)
 Adjectives and nouns are clustered with `measures/cluster.py` with the following arguments:
 * `-v $GLOVE` -- a file containing space-delimited wordforms and their vectors
