@@ -37,6 +37,8 @@ source("../results/helpers.r")
 
 agr = bootsSummary(data=d, measurevar="response", groupvars=c("predicate"))
 
+mean(agr$N) ## 19.8995
+
 ## write to CSV files
 #write.csv(agr,"../results/adjective-subjectivity.csv")
 #write.csv(agg_class,"../results/class-subjectivity.csv")
