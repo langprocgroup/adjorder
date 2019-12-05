@@ -24,9 +24,6 @@ train_scores = read_csv("../cc_aan_scores.csv", na=c("None"))
 ud_test_scores = read_csv("../ud_aan_scores.csv", na=c("None"))
 cc_test_scores = read_csv("../cc_aan_test_scores.csv", na=c("None"))
 ```
-```{r}
-ud_test_scores
-```
 
 
 ## Some useful functions
@@ -60,8 +57,6 @@ accuracy = function(m, d) {
       n=sum(!is.na(correct))
     )
 }
-
-get_predictions()
 
 ```
 
@@ -102,6 +97,7 @@ regression_format_data = function(scores) {
     spread(predictor, value) %>%
     unroll() %>%
     select(-count)
+  
 }
 
 train_d = regression_format_data(train_scores)
@@ -125,6 +121,18 @@ fit_model_from_predictors = function(predictors, data) {
 fit_models = function(predictors, data) {
   map(predictors, function(p) {fit_model_from_predictors(p, data)})
 }
+
+get_predictions = function(predictors, train_data, test_data) {
+  model = fit_model_from_predictors(predictors, train_data)
+  predict(model, test_data) > .5
+
+}
+
+get_corrects = function(predictors, train_data, test_data) {
+  get_predictions(predictors, train_data, test_data) == test_data$alphabetical
+}
+
+
 
 ```
 
@@ -152,6 +160,11 @@ VS_SUBJECTIVITY_WF = list(
   c("s_awf", "ig_awf_ncl"),
   c("s_awf", "ig_acl_nwf"),
   c("s_awf", "ig_acl_ncl")
+)
+
+THREE = list(
+  c("pmi_awf_nwf", "s_awf", "ig_acl_ncl"),
+  c("pmi_awf_nwf", "s_awf", "ic_acl_ncl")
 )
 
 VS_SUBJECTIVITY_CL = list(
@@ -200,7 +213,6 @@ acc %>%
     theme_bw() +
     ylim(0, 1) + 
     ylab("accuracy")
-
 }
 
 
@@ -215,15 +227,127 @@ plot_accuracies(PREDICTORS, train_d, cc_test_d)
 ```
 
 
-
 ```{r}
-plot_accuracies(VS_SUBJECTIVITY_WF, train_d, ud_test_d) 
+get_accuracy_table(VS_SUBJECTIVITY_WF, train_d, cc_test_d) %>% arrange(-m)
 ```
 
 ```{r}
-get_accuracy_table(VS_SUBJECTIVITY_CL, d, d) %>% arrange(-m)
+get_accuracy_table(VS_SUBJECTIVITY_WF, train_d, cc_test_d) %>% arrange(-m)
 ```
 
+```{r}
+get_accuracy_table(THREE, train_d, ud_test_d) %>% arrange(-m)
+```
+
+```{r}
+get_accuracy_table(VS_SUBJECTIVITY_WF, train_d, ud_test_d) %>% arrange(-m)
+```
+
+
+```{r}
+get_accuracy_table(THREE, train_d, cc_test_d) %>% arrange(-m)
+```
+
+## Qualitative analysis
+
+```{r}
+
+populate_predictions = function(train_d, test_d) {
+  d = test_d 
+  for (predictor in PREDICTORS) {
+    predictions = get_predictions(predictor, train_d, test_d)
+    d[,predictor] = predictions
+  }
+  d
+}
+populate_corrects = function(train_d, test_d) {
+  d = test_d 
+  for (predictor in PREDICTORS) {
+    corrects = get_corrects(predictor, train_d, test_d)
+    d[,predictor] = corrects
+  }
+  d
+}
+
+overlap = function(xs, ys) {
+  stopifnot(length(xs) == length(ys))
+  sum(xs == ys, na.rm=T) / sum(!is.na(xs))
+}
+
+predictions_ud = populate_predictions(train_d, ud_test_d)
+corrects_ud = populate_corrects(train_d, ud_test_d)
+
+predictions_cc = populate_predictions(train_d, cc_test_d)
+corrects_cc = populate_corrects(train_d, cc_test_d)
+
+
+filter(corrects_ud, pmi_awf_nwf & !s_awf)
+
+
+```
+```{r}
+filter(corrects_ud, !pmi_awf_nwf & s_awf)
+```
+
+
+
+```{r}
+filter(corrects_ud, !pmi_awf_nwf & ic_acl_ncl & !s_awf)
+```
+
+```{r}
+filter(corrects_ud, ig_acl_ncl & !ic_acl_ncl & !pmi_awf_nwf)
+```
+
+```{r}
+filter(d, !pmi_awf_nwf & s_awf)
+
+```
+
+```{r}
+filter(d, ic_acl_ncl & !pmi_awf_nwf)
+
+```
+
+## How much do predictions overlap? 
+
+```{r}
+num_predictors = length(PREDICTORS)
+crossed = data.frame(p1=rep(PREDICTORS, each=num_predictors), p2=rep(PREDICTORS, times=num_predictors))
+crossed$overlap = NA
+for(row in 1:nrow(crossed)) {
+  p1 = crossed[row,"p1"]
+  p2 = crossed[row,"p2"]
+  crossed[row,]$overlap = overlap(predictions_ud[p1,], predictions_ud[p2,])
+}
+
+ggplot(crossed, aes(x=p1, y=p2, fill=overlap)) + geom_tile()
+```
+
+
+```{r}
+to_compare = c("pmi_awf_nwf", "s_awf", "ic_awf_nwf", "ig_awf_nwf")
+
+crossed %>%
+  filter(p1 %in% to_compare, p2 %in% to_compare) %>%
+  ggplot(aes(x=p1, y=p2, fill=overlap)) + geom_tile()
+```
+
+```{r}
+to_compare = c("pmi_acl_ncl", "s_acl", "ic_acl_ncl", "ig_acl_ncl")
+
+crossed %>%
+  filter(p1 %in% to_compare, p2 %in% to_compare) %>%
+  ggplot(aes(x=p1, y=p2, fill=overlap)) + geom_tile()
+```
+
+```{r}
+to_compare = c("pmi_awf_nwf", "s_awf", "ic_awf_nwf", "ig_awf_nwf", "pmi_acl_ncl", "s_acl", "ic_acl_ncl", "ig_acl_ncl")
+
+crossed %>%
+  filter(p1 %in% to_compare, p2 %in% to_compare) %>%
+  ggplot(aes(x=p1, y=p2, fill=overlap)) + geom_tile()
+```
 
 ## AUC
 
