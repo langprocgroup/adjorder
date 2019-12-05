@@ -29,10 +29,6 @@ cc_test_scores = read_csv("../cc_aan_test_scores.csv", na=c("None"))
 ## Some useful functions
 ```{r}
 
-PREDICTORS = c(
-"p_awf","p_acl","p_nwf","p_ncl","p_awf_nwf","p_awf_ncl","p_acl_nwf","p_acl_ncl","ic_awf_nwf","ic_awf_ncl","ic_acl_nwf","ic_acl_ncl","pmi_awf_nwf","pmi_awf_ncl","pmi_acl_nwf","pmi_acl_ncl","s_awf","s_acl","ig_awf_nwf","ig_awf_ncl","ig_acl_nwf","ig_acl_ncl"
-)
-
 get_deltas = function(d) {
   # Given scores, return the difference in scores for the first adjective minus the second adjective, for all predictors
   d %>% 
@@ -99,11 +95,12 @@ regression_format_data = function(scores) {
     select(-count)
   
 }
+```
 
+```{r}
 train_d = regression_format_data(train_scores)
 ud_test_d = regression_format_data(ud_test_scores)
 cc_test_d = regression_format_data(cc_test_scores)
-
 ```
 
 ## Fit regressions
@@ -125,7 +122,6 @@ fit_models = function(predictors, data) {
 get_predictions = function(predictors, train_data, test_data) {
   model = fit_model_from_predictors(predictors, train_data)
   predict(model, test_data) > .5
-
 }
 
 get_corrects = function(predictors, train_data, test_data) {
@@ -147,18 +143,48 @@ get_accuracy_table = function(predictors, train_data, test_data) {
     mutate(predictors=as.character(map(predictors, plusify)))
 }
 
+```
+
+```{r}
+
+PREDICTORS = c(
+"p_awf",
+"p_acl",
+"p_nwf",
+"p_ncl",
+"p_awf_nwf",
+#"p_awf_ncl",
+#"p_acl_nwf",
+"p_acl_ncl",
+"ic_awf_nwf",
+#"ic_awf_ncl",
+#"ic_acl_nwf",
+"ic_acl_ncl",
+"pmi_awf_nwf",
+#"pmi_awf_ncl",
+#"pmi_acl_nwf",
+"pmi_acl_ncl",
+"s_awf",
+"s_acl",
+"ig_awf_nwf",
+#"ig_awf_ncl",
+#"ig_acl_nwf",
+"ig_acl_ncl"
+)
+
+
 VS_SUBJECTIVITY_WF = list(
   c("s_awf", "pmi_awf_nwf"),
-  c("s_awf", "pmi_awf_ncl"),
-  c("s_awf", "pmi_acl_nwf"),
+  #c("s_awf", "pmi_awf_ncl"),
+  #c("s_awf", "pmi_acl_nwf"),
   c("s_awf", "pmi_acl_ncl"),
   c("s_awf", "ic_awf_nwf"),
-  c("s_awf", "ic_awf_ncl"),
-  c("s_awf", "ic_acl_nwf"),
+  #c("s_awf", "ic_awf_ncl"),
+  #c("s_awf", "ic_acl_nwf"),
   c("s_awf", "ic_acl_ncl"),
   c("s_awf", "ig_awf_nwf"),
-  c("s_awf", "ig_awf_ncl"),
-  c("s_awf", "ig_acl_nwf"),
+  #c("s_awf", "ig_awf_ncl"),
+  #c("s_awf", "ig_acl_nwf"),
   c("s_awf", "ig_acl_ncl")
 )
 
@@ -168,10 +194,45 @@ THREE = list(
 )
 
 VS_SUBJECTIVITY_CL = list(
+  c("s_acl", "pmi_awf_nwf"),
   c("s_acl", "pmi_acl_ncl"),
+  c("s_acl", "ic_awf_nwf"),
   c("s_acl", "ic_acl_ncl"),
+  c("s_acl", "ig_awf_nwf"),
   c("s_acl", "ig_acl_ncl")
 )
+
+ALL_PAIRS = combn(PREDICTORS, 2, simplify=F)
+
+```
+
+```{r}
+
+plot_accuracies = function(predictors, train_d, test_d, corpus) {
+
+acc = get_accuracy_table(predictors, train_d, test_d) %>% 
+  separate(predictors, sep="_", into=c("predictor", "source_a", "source_n")) %>% 
+  filter(predictor != "p") %>%
+  unite(source, source_a, source_n, sep="_") %>%
+  mutate(source=if_else(source == "awf_NA", "awf_nwf", if_else(source == "acl_NA", "acl_ncl", source)))
+
+acc %>%
+  mutate(predictor=if_else(predictor == "s", "Subjectivity",
+                   if_else(predictor == "pmi", "PMI",
+                   if_else(predictor == "ic", "IC",
+                   if_else(predictor == "ig", "IG", "ERROR"))))) %>%
+  mutate(source=if_else(source == "acl_ncl", "Clusters", "Wordforms")) %>%
+  mutate(source=factor(source, levels=c("Wordforms", "Clusters"))) %>%
+  ggplot(aes(x=predictor, y=m, ymin=lower, ymax=upper, fill=predictor)) +     
+    geom_bar(stat="identity") +
+    geom_errorbar(width=.2) + 
+    facet_wrap(~source) +
+    theme_bw() +
+    ylim(0, 1) + 
+    ylab(str_c(corpus, "accuracy", sep=" ")) +
+    xlab("")
+}
+
 
 ```
 
@@ -179,70 +240,33 @@ VS_SUBJECTIVITY_CL = list(
 get_accuracy_table(PREDICTORS, train_d, ud_test_d) %>% arrange(-m)
 ```
 
-```{r}
-
-plot_accuracies = function(predictors, train_d, test_d) {
-
-acc = get_accuracy_table(predictors, train_d, test_d) %>% 
-  separate(predictors, sep="_", into=c("predictor", "source_a", "source_n")) %>% 
-  filter(predictor != "p")
-
-acc1 = acc %>% 
-  filter(is.na(source_n)) %>%
-  mutate(source_n=if_else(is.na(source_n), "nwf", source_n)) 
-
-acc2 = acc %>% 
-  filter(is.na(source_n)) %>%
-  mutate(source_n=if_else(is.na(source_n), "ncl", source_n))
-
-acc = acc %>% filter(!is.na(source_n)) %>% rbind(acc1) %>% rbind(acc2)
-
-acc %>%
-  mutate(predictor=if_else(predictor == "s", "Subjectivity",
-                   if_else(predictor == "pmi", "PMI",
-                   if_else(predictor == "ic", "IC",
-                   if_else(predictor == "ig", "IG", "ERROR"))))) %>%
-  mutate(source_n=if_else(source_n == "ncl", "Nouns: Clusters", "Nouns: Wordforms"),
-         source_a=if_else(source_a == "acl", "Adjectives: Clusters", "Adjectives: Wordforms")) %>%
-  mutate(source_n=factor(source_n, levels=c("Nouns: Wordforms", "Nouns: Clusters")),
-         source_a=factor(source_a, levels=c("Adjectives: Wordforms", "Adjectives: Clusters"))) %>%
-  ggplot(aes(x=predictor, y=m, ymin=lower, ymax=upper, fill=predictor)) +     
-    geom_bar(stat="identity") +
-    geom_errorbar(width=.2) + 
-    facet_grid(source_n~source_a) +
-    theme_bw() +
-    ylim(0, 1) + 
-    ylab("accuracy")
-}
-
-
-```
 
 ```{r}
-plot_accuracies(PREDICTORS, train_d, ud_test_d)
-```
-
-```{r}
-plot_accuracies(PREDICTORS, train_d, cc_test_d)
+plot_accuracies(PREDICTORS, train_d, ud_test_d, "UD")
 ```
 
 
 ```{r}
-get_accuracy_table(VS_SUBJECTIVITY_WF, train_d, cc_test_d) %>% arrange(-m)
+get_accuracy_table(PREDICTORS, train_d, cc_test_d) %>% arrange(-m)
 ```
 
-```{r}
-get_accuracy_table(VS_SUBJECTIVITY_WF, train_d, cc_test_d) %>% arrange(-m)
-```
 
 ```{r}
-get_accuracy_table(THREE, train_d, ud_test_d) %>% arrange(-m)
+plot_accuracies(PREDICTORS, train_d, cc_test_d, "CC")
+```
+
+
+```{r}
+get_accuracy_table(ALL_PAIRS, train_d, cc_test_d) %>% arrange(-m)
 ```
 
 ```{r}
 get_accuracy_table(VS_SUBJECTIVITY_WF, train_d, ud_test_d) %>% arrange(-m)
 ```
 
+```{r}
+get_accuracy_table(THREE, train_d, ud_test_d) %>% arrange(-m)
+```
 
 ```{r}
 get_accuracy_table(THREE, train_d, cc_test_d) %>% arrange(-m)
@@ -252,21 +276,21 @@ get_accuracy_table(THREE, train_d, cc_test_d) %>% arrange(-m)
 
 ```{r}
 
-populate_predictions = function(train_d, test_d) {
+populate = function(get_val, train_d, test_d) {
   d = test_d 
   for (predictor in PREDICTORS) {
-    predictions = get_predictions(predictor, train_d, test_d)
+    predictions = get_val(predictor, train_d, test_d)
     d[,predictor] = predictions
   }
   d
 }
+
 populate_corrects = function(train_d, test_d) {
-  d = test_d 
-  for (predictor in PREDICTORS) {
-    corrects = get_corrects(predictor, train_d, test_d)
-    d[,predictor] = corrects
-  }
-  d
+  populate(get_corrects, train_d, test_d)
+}
+
+populate_predictions = function(train_d, test_d) {
+  populate(get_predictions, train_d, test_d)
 }
 
 overlap = function(xs, ys) {
@@ -274,17 +298,21 @@ overlap = function(xs, ys) {
   sum(xs == ys, na.rm=T) / sum(!is.na(xs))
 }
 
-predictions_ud = populate_predictions(train_d, ud_test_d)
-corrects_ud = populate_corrects(train_d, ud_test_d)
+```
 
-predictions_cc = populate_predictions(train_d, cc_test_d)
+```{r}
+
+corrects_ud = populate_corrects(train_d, ud_test_d)
 corrects_cc = populate_corrects(train_d, cc_test_d)
 
+predictions_ud = populate_predictions(train_d, ud_test_d)
+predictions_cc = populate_predictions(train_d, cc_test_d)
 
 filter(corrects_ud, pmi_awf_nwf & !s_awf)
-
-
 ```
+
+
+
 ```{r}
 filter(corrects_ud, !pmi_awf_nwf & s_awf)
 ```
@@ -292,11 +320,11 @@ filter(corrects_ud, !pmi_awf_nwf & s_awf)
 
 
 ```{r}
-filter(corrects_ud, !pmi_awf_nwf & ic_acl_ncl & !s_awf)
+filter(corrects_ud, ig_acl_ncl & !pmi_awf_nwf & !s_acl)
 ```
 
 ```{r}
-filter(corrects_ud, ig_acl_ncl & !ic_acl_ncl & !pmi_awf_nwf)
+filter(corrects_ud, !ig_acl_ncl & !s_acl & !pmi_awf_nwf)
 ```
 
 ```{r}
@@ -318,7 +346,7 @@ crossed$overlap = NA
 for(row in 1:nrow(crossed)) {
   p1 = crossed[row,"p1"]
   p2 = crossed[row,"p2"]
-  crossed[row,]$overlap = overlap(predictions_ud[p1,], predictions_ud[p2,])
+  crossed[row,]$overlap = overlap(predictions_cc[p1,], predictions_cc[p2,])
 }
 
 ggplot(crossed, aes(x=p1, y=p2, fill=overlap)) + geom_tile()
